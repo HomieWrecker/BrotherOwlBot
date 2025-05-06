@@ -6,7 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -50,6 +50,14 @@ try {
   // This ensures that if the welcome command has errors, it won't break the entire bot
 }
 
+try {
+  factionstatsCommand = require('./factionstats').factionstatsCommand;
+  log('Loaded faction stats command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading faction stats command:', error);
+}
+
 // Collection of commands to register
 const commands = [
   statusCommand,
@@ -65,6 +73,7 @@ if (bankCommand) commands.push(bankCommand);
 if (eventsCommand) commands.push(eventsCommand);
 if (chainsheetCommand) commands.push(chainsheetCommand);
 if (welcomeCommand) commands.push(welcomeCommand);
+if (factionstatsCommand) commands.push(factionstatsCommand);
 
 /**
  * Registers all slash commands with Discord API

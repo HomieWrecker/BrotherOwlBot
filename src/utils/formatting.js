@@ -37,6 +37,7 @@ function formatTimeRemaining(seconds) {
  * @returns {string} Formatted number
  */
 function formatNumber(num) {
+  if (num === undefined || num === null) return '0';
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
@@ -112,10 +113,91 @@ function formatRelativeTime(date) {
   }
 }
 
+/**
+ * Format a percentage change with arrow and color indicators
+ * @param {number} percent - Percentage change
+ * @returns {string} Formatted percentage change with arrow
+ */
+function formatPercentChange(percent) {
+  if (percent === undefined || percent === null || isNaN(percent)) {
+    return '0%';
+  }
+  
+  const roundedPercent = Math.round(percent * 10) / 10; // Round to 1 decimal place
+  
+  if (roundedPercent > 0) {
+    return `+${roundedPercent.toFixed(1)}% 📈`;
+  } else if (roundedPercent < 0) {
+    return `${roundedPercent.toFixed(1)}% 📉`;
+  } else {
+    return `${roundedPercent.toFixed(1)}% ⏸️`;
+  }
+}
+
+/**
+ * Format a stat value with K, M, B suffixes for larger numbers
+ * @param {number} value - The value to format
+ * @returns {string} Formatted value with appropriate suffix
+ */
+function formatStatValue(value) {
+  if (value === undefined || value === null) return '0';
+  
+  if (value >= 1000000000) {
+    return `${(value / 1000000000).toFixed(1)}B`;
+  } else if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  } else if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  } else {
+    return value.toString();
+  }
+}
+
+/**
+ * Format a currency value
+ * @param {number} amount - The amount to format
+ * @returns {string} Formatted currency
+ */
+function formatCurrency(amount) {
+  if (amount === undefined || amount === null) return '$0';
+  
+  if (amount >= 1000000000) {
+    return `$${(amount / 1000000000).toFixed(2)}B`;
+  } else if (amount >= 1000000) {
+    return `$${(amount / 1000000).toFixed(2)}M`;
+  } else if (amount >= 1000) {
+    return `$${(amount / 1000).toFixed(2)}K`;
+  } else {
+    return `$${amount.toFixed(2)}`;
+  }
+}
+
+/**
+ * Format a time period
+ * @param {string} period - The period identifier ('day', 'week', 'month')
+ * @returns {string} Formatted period name
+ */
+function formatPeriod(period) {
+  switch (period.toLowerCase()) {
+    case 'day':
+      return '24 Hours';
+    case 'week':
+      return '7 Days';
+    case 'month':
+      return '30 Days';
+    default:
+      return period;
+  }
+}
+
 module.exports = {
   formatTimeRemaining,
   formatNumber,
   formatDate,
   formatDayAndTime,
-  formatRelativeTime
+  formatRelativeTime,
+  formatPercentChange,
+  formatStatValue,
+  formatCurrency,
+  formatPeriod
 };

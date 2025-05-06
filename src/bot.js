@@ -42,6 +42,15 @@ try {
   // Silently continue if service isn't available
 }
 
+// Load stats tracking service if available
+let statsTrackingService = null;
+try {
+  statsTrackingService = require('./services/stats-tracking');
+  log('Stats tracking service loaded');
+} catch (error) {
+  // Silently continue if service isn't available
+}
+
 // Discord client with required intents
 const client = new Client({
   intents: [
@@ -129,6 +138,24 @@ function startBot() {
         logError('Failed to initialize welcome service:', error);
         // Silently continue if service fails to start
         // This ensures that errors in the welcome service don't affect core bot functionality
+      }
+    }
+    
+    // Initialize stats tracking service if available
+    if (statsTrackingService && statsTrackingService.initStatsTrackingService) {
+      try {
+        statsTrackingService.initStatsTrackingService(client);
+        log('Stats tracking service initialized');
+        
+        // Process initial stats update if we have faction data
+        if (client.tornData && client.tornData.faction) {
+          statsTrackingService.processStatsUpdate(client, client.tornData.faction);
+          log('Initial faction stats processed');
+        }
+      } catch (error) {
+        logError('Failed to initialize stats tracking service:', error);
+        // Silently continue if service fails to start
+        // This ensures that errors in the stats tracking service don't affect core bot functionality
       }
     }
   });
@@ -253,6 +280,26 @@ function startBot() {
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing this welcome action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle faction stats buttons
+        else if (interaction.customId.startsWith('factionstats_')) {
+          // Try to find faction stats command
+          const factionstatsCommand = client.commands.get('factionstats');
+          if (factionstatsCommand && factionstatsCommand.handleButton) {
+            // Use a separate try-catch to ensure faction stats buttons don't affect other functionality
+            try {
+              const { handleButton } = require('./commands/factionstats');
+              await handleButton(interaction, client);
+            } catch (statsError) {
+              logError('Error in faction stats button handler (isolated):', statsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this faction stats action. This error has been logged and will not affect other bot functionality.',
                   ephemeral: true
                 }).catch(() => {});
               }
