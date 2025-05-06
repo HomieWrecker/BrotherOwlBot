@@ -483,6 +483,44 @@ function startBot() {
             }
           }
         }
+        // Handle activity heat map buttons
+        else if (interaction.customId.startsWith('heatmap_')) {
+          // Try to find activitymap command
+          const activitymapCommand = client.commands.get('activitymap');
+          if (activitymapCommand && activitymapCommand.handleButton) {
+            // Use a separate try-catch to ensure activity heat map buttons don't affect other functionality
+            try {
+              await activitymapCommand.handleButton(interaction, client);
+            } catch (heatmapError) {
+              logError('Error in activity heat map button handler (isolated):', heatmapError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this activity heat map action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle war pay buttons
+        else if (interaction.customId.startsWith('warpay_')) {
+          // Try to find warpay command
+          const warpayCommand = client.commands.get('warpay');
+          if (warpayCommand && warpayCommand.handleButton) {
+            // Use a separate try-catch to ensure war pay buttons don't affect other functionality
+            try {
+              await warpayCommand.handleButton(interaction, client);
+            } catch (warpayError) {
+              logError('Error in war pay button handler (isolated):', warpayError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this war pay action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
         
