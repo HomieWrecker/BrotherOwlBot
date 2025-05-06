@@ -15,7 +15,7 @@ const {
 const { log, logError } = require('../utils/logger');
 const { BOT_CONFIG } = require('../config');
 const { getPlayerBattleStats, getFactionMembersStats, extractWebContent } = require('../utils/torn-scraper');
-const { getUserApiKey } = require('./apikey').apikeyCommand;
+const { getUserApiKey } = require('./apikey');
 
 // Create a command builder for the spy command
 const spyCommand = {
