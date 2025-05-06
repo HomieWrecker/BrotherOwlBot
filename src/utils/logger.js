@@ -3,35 +3,39 @@
  */
 
 // Standard info logging
-function log(...args) {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [INFO]`, ...args);
+function log(message, silent = false, ...args) {
+  if (!silent) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [INFO]`, message, ...args);
+  }
 }
 
 // Error logging
-function logError(...args) {
+function logError(message, ...args) {
   const timestamp = new Date().toISOString();
-  console.error(`[${timestamp}] [ERROR]`, ...args);
+  console.error(`[${timestamp}] [ERROR]`, message, ...args);
 }
 
 // Warning logging
-function logWarning(...args) {
+function logWarning(message, ...args) {
   const timestamp = new Date().toISOString();
-  console.warn(`[${timestamp}] [WARNING]`, ...args);
+  console.warn(`[${timestamp}] [WARNING]`, message, ...args);
 }
 
 // Debug logging - only shown when debug mode is enabled
-function logDebug(...args) {
+function logDebug(message, ...args) {
   if (process.env.DEBUG === 'true') {
     const timestamp = new Date().toISOString();
-    console.debug(`[${timestamp}] [DEBUG]`, ...args);
+    console.debug(`[${timestamp}] [DEBUG]`, message, ...args);
   }
 }
 
 // WebSocket specific logging
-function logWS(...args) {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [WEBSOCKET]`, ...args);
+function logWS(message, silent = false, ...args) {
+  if (!silent) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [WEBSOCKET]`, message, ...args);
+  }
 }
 
 module.exports = {
