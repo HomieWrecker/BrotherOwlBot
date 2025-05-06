@@ -60,6 +60,24 @@ try {
   // Silently continue if service isn't available
 }
 
+// Load war strategy service if available
+let warStrategyService = null;
+try {
+  warStrategyService = require('./services/war-strategy');
+  log('War strategy service loaded');
+} catch (error) {
+  // Silently continue if service isn't available
+}
+
+// Load role permissions service if available
+let rolePermissionsService = null;
+try {
+  rolePermissionsService = require('./services/role-permissions');
+  log('Role permissions service loaded');
+} catch (error) {
+  // Silently continue if service isn't available
+}
+
 // Discord client with required intents
 const client = new Client({
   intents: [
@@ -177,6 +195,18 @@ function startBot() {
         logError('Failed to initialize war countdown service:', error);
         // Silently continue if service fails to start
         // This ensures that errors in the war countdown service don't affect core bot functionality
+      }
+    }
+    
+    // Initialize war strategy service if available
+    if (warStrategyService && warStrategyService.initWarStrategyService) {
+      try {
+        warStrategyService.initWarStrategyService(client);
+        log('War strategy service initialized');
+      } catch (error) {
+        logError('Failed to initialize war strategy service:', error);
+        // Silently continue if service fails to start
+        // This ensures that errors in the war strategy service don't affect core bot functionality
       }
     }
   });
@@ -340,6 +370,44 @@ function startBot() {
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing this war countdown action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle war strategy buttons
+        else if (interaction.customId.startsWith('warstrategy_')) {
+          // Try to find war strategy command
+          const warstrategyCommand = client.commands.get('warstrategy');
+          if (warstrategyCommand && warstrategyCommand.handleButton) {
+            // Use a separate try-catch to ensure war strategy buttons don't affect other functionality
+            try {
+              await warstrategyCommand.handleButton(interaction, client);
+            } catch (strategyError) {
+              logError('Error in war strategy button handler (isolated):', strategyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this war strategy action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle permissions buttons
+        else if (interaction.customId.startsWith('permissions_')) {
+          // Try to find bot permissions command
+          const botpermissionsCommand = client.commands.get('botpermissions');
+          if (botpermissionsCommand && botpermissionsCommand.handleButton) {
+            // Use a separate try-catch to ensure permissions buttons don't affect other functionality
+            try {
+              await botpermissionsCommand.handleButton(interaction, client);
+            } catch (permissionsError) {
+              logError('Error in bot permissions button handler (isolated):', permissionsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this permissions action. This error has been logged and will not affect other bot functionality.',
                   ephemeral: true
                 }).catch(() => {});
               }
