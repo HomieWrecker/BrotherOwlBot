@@ -13,8 +13,7 @@ const SERVICES = {
   YATA: 'yata',
   ANARCHY: 'anarchy',
   TORNSTATS: 'tornstats',
-  TORNTOOLS: 'torntools',
-  TORTOISE: 'tortoise'
+  TORNTOOLS: 'torntools'
 };
 
 /**
@@ -73,9 +72,6 @@ function buildServiceUrl(service, endpoint, apiKey, options = {}) {
     case SERVICES.TORNTOOLS:
       return `https://torntools.com/api/v1/${endpoint}/?key=${apiKey}`;
     
-    case SERVICES.TORTOISE:
-      return `https://tortoise.torn.com/api/v1/${endpoint}/?key=${apiKey}`;
-    
     case SERVICES.TORN:
     default:
       const selections = options.selections ? `&selections=${options.selections}` : '';
@@ -96,8 +92,7 @@ async function checkServiceAvailability(service) {
       [SERVICES.YATA]: 'https://yata.yt/',
       [SERVICES.ANARCHY]: 'https://anarchy.torn.com/',
       [SERVICES.TORNSTATS]: 'https://www.tornstats.com/',
-      [SERVICES.TORNTOOLS]: 'https://torntools.com/',
-      [SERVICES.TORTOISE]: 'https://tortoise.torn.com/'
+      [SERVICES.TORNTOOLS]: 'https://torntools.com/'
     };
     
     const url = urls[service];

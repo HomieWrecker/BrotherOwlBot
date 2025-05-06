@@ -68,9 +68,6 @@ const statusCommand = {
       const torntoolsStatus = await checkServiceAvailability(SERVICES.TORNTOOLS);
       serviceStatuses.push(`TornTools: ${torntoolsStatus ? '✅' : '❌'}`);
       
-      const tortoiseStatus = await checkServiceAvailability(SERVICES.TORTOISE);
-      serviceStatuses.push(`Tortoise: ${tortoiseStatus ? '✅' : '❌'}`);
-      
       // Add external services status field
       embed.addFields({
         name: 'External Services',
