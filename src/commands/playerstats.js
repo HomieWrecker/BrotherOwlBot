@@ -79,7 +79,6 @@ const playerStatsCommand = {
         stats: {
           level: stats.level,
           experience: stats.experience,
-          networth: stats.networth,
           respect: stats.respect || 0,
           total_battlestats: calculateTotalBattlestats(stats)
         }
@@ -219,8 +218,7 @@ function createStatsEmbed(stats, previousStats, source) {
   // Add main stats
   embed.addFields(
     { name: 'Level', value: `${stats.level}`, inline: true },
-    { name: 'Gender', value: stats.gender || 'Unknown', inline: true },
-    { name: 'Networth', value: `$${formatNumber(stats.networth || 0)}`, inline: true }
+    { name: 'Gender', value: stats.gender || 'Unknown', inline: true }
   );
   
   // Add battle stats
@@ -255,12 +253,7 @@ function createStatsEmbed(stats, previousStats, source) {
       }
     }
     
-    if (prevStats.networth !== undefined && stats.networth !== undefined) {
-      const networthDiff = stats.networth - prevStats.networth;
-      if (networthDiff !== 0) {
-        growth.push(`Networth: ${networthDiff > 0 ? '+' : ''}$${formatNumber(networthDiff)}`);
-      }
-    }
+    // Networth tracking removed as requested
     
     if (growth.length > 0) {
       embed.addFields({ 
