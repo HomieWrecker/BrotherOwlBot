@@ -478,6 +478,25 @@ function startBot() {
             }
           }
         }
+        // Handle API key modals
+        else if (interaction.customId.startsWith('apikey_')) {
+          // Try to find apikey command
+          const apikeyCommand = client.commands.get('apikey');
+          if (apikeyCommand && apikeyCommand.handleModal) {
+            // Use a separate try-catch to ensure API key modals don't affect other functionality
+            try {
+              await apikeyCommand.handleModal(interaction, client);
+            } catch (apikeyError) {
+              logError('Error in API key modal handler (isolated):', apikeyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your API key submission. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling modal submission:', error);
         

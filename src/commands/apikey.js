@@ -25,99 +25,123 @@ try {
   logError('Error initializing user keys storage:', error);
 }
 
-// API key command - allows users to set their Torn API key
+// Migrate old format to new format if needed
+Object.keys(userKeys).forEach(userId => {
+  if (typeof userKeys[userId] !== 'object' || userKeys[userId] === null) {
+    return;
+  }
+  
+  // If user has old format (single 'key' property)
+  if (userKeys[userId].key && !userKeys[userId].torn) {
+    userKeys[userId] = {
+      torn: userKeys[userId].key,
+      dateAdded: userKeys[userId].dateAdded || new Date().toISOString(),
+    };
+  }
+});
+
+// API key command - allows users to set their Torn API key and additional service keys
 const apikeyCommand = {
   data: new SlashCommandBuilder()
     .setName('apikey')
-    .setDescription('Manage your Torn API key for enhanced features'),
+    .setDescription('Manage your API keys for Torn and related services'),
   
   async execute(interaction, client) {
-    // Check if user has an API key stored
-    const userKey = userKeys[interaction.user.id];
-    const hasKey = !!userKey;
+    // Check if user has API keys stored
+    const userData = userKeys[interaction.user.id] || {};
+    const hasTornKey = !!userData.torn;
+    const hasYataKey = !!userData.yata;
+    const hasTornStatsKey = !!userData.tornstats;
     
     // Create the API key management embed
     const embed = new EmbedBuilder()
-      .setTitle('🔑 Torn API Key Management')
+      .setTitle('🔑 API Key Management')
       .setColor(BOT_CONFIG.color)
-      .setDescription('Your Torn API key allows the bot to fetch your personal stats and data.')
+      .setDescription('Manage your API keys for Torn and related services.')
       .setFooter({ text: `${BOT_CONFIG.name} v${BOT_CONFIG.version}` });
     
-    if (hasKey) {
-      // Add key status information to embed
-      embed.addFields(
-        { name: 'Status', value: '✅ API Key Set', inline: true },
-        { name: 'Date Added', value: new Date(userKey.dateAdded).toLocaleString(), inline: true }
-      );
-      
-      // Check key permissions if possible
+    // Torn API key status
+    const tornKeyField = { name: 'Torn API Key', inline: false };
+    if (hasTornKey) {
       try {
-        const response = await fetch(`https://api.torn.com/user/?selections=basic&key=${userKey.key}`);
+        const response = await fetch(`https://api.torn.com/user/?selections=basic&key=${userData.torn}`);
         const data = await response.json();
         
         if (!data.error) {
-          embed.addFields(
-            { name: 'Connected Account', value: `${data.name} [${data.player_id}]`, inline: true },
-            { name: 'Access Level', value: getUserAccessLevel(userKey.key), inline: true }
-          );
+          tornKeyField.value = `✅ Connected to: **${data.name}** [${data.player_id}]\n` +
+                              `Access Level: ${getUserAccessLevel(userData.torn)}\n` +
+                              `Key: ${maskApiKey(userData.torn)}`;
         } else {
-          embed.addFields(
-            { name: 'Key Validation', value: `❌ Error: ${data.error.error}`, inline: true }
-          );
+          tornKeyField.value = `⚠️ Stored but error: ${data.error.error}\n` +
+                              `Key: ${maskApiKey(userData.torn)}`;
         }
       } catch (error) {
-        embed.addFields(
-          { name: 'Key Validation', value: '❌ Could not verify key', inline: true }
-        );
+        tornKeyField.value = `⚠️ Stored but couldn't validate\n` +
+                            `Key: ${maskApiKey(userData.torn)}`;
       }
     } else {
-      // User doesn't have a key yet
-      embed.addFields(
-        { name: 'Status', value: '❌ No API Key Set', inline: true }
-      );
-      embed.setDescription(
-        'Set up your Torn API key to use enhanced features like player stats tracking and growth monitoring. ' +
-        'Your key is stored securely and only used to fetch data for you.'
-      );
+      tornKeyField.value = `❌ Not set - Required for most features`;
     }
+    embed.addFields(tornKeyField);
     
-    // Create the button row based on current status
-    const row = new ActionRowBuilder();
-    
-    if (hasKey) {
-      // User has a key - show update and remove buttons
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId('apikey_update')
-          .setLabel('Update API Key')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('apikey_remove')
-          .setLabel('Remove API Key')
-          .setStyle(ButtonStyle.Danger)
-      );
+    // YATA API key status
+    const yataKeyField = { name: 'YATA API Key', inline: true };
+    if (hasYataKey) {
+      yataKeyField.value = `✓ Stored: ${maskApiKey(userData.yata)}`;
     } else {
-      // User doesn't have a key - show set button
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId('apikey_set')
-          .setLabel('Set API Key')
-          .setStyle(ButtonStyle.Success)
-      );
+      yataKeyField.value = '❌ Not set';
     }
     
-    // Add help button regardless of status
-    row.addComponents(
+    // TornStats API key status
+    const tornStatsKeyField = { name: 'TornStats API Key', inline: true };
+    if (hasTornStatsKey) {
+      tornStatsKeyField.value = `✓ Stored: ${maskApiKey(userData.tornstats)}`;
+    } else {
+      tornStatsKeyField.value = '❌ Not set';
+    }
+    
+    // Add additional API key fields
+    embed.addFields(yataKeyField, tornStatsKeyField);
+    
+    // Create the primary button row
+    const primaryRow = new ActionRowBuilder();
+    primaryRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId('apikey_torn')
+        .setLabel(hasTornKey ? 'Update Torn API Key' : 'Set Torn API Key')
+        .setStyle(hasTornKey ? ButtonStyle.Primary : ButtonStyle.Success)
+    );
+    
+    // Create the secondary button row
+    const secondaryRow = new ActionRowBuilder();
+    secondaryRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId('apikey_yata')
+        .setLabel(hasYataKey ? 'Update YATA Key' : 'Set YATA Key')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('apikey_tornstats')
+        .setLabel(hasTornStatsKey ? 'Update TornStats Key' : 'Set TornStats Key')
+        .setStyle(ButtonStyle.Secondary)
+    );
+    
+    // Create the utility button row
+    const utilityRow = new ActionRowBuilder();
+    utilityRow.addComponents(
       new ButtonBuilder()
         .setCustomId('apikey_help')
-        .setLabel('How to Get an API Key')
-        .setStyle(ButtonStyle.Secondary)
+        .setLabel('Help & Info')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('apikey_remove')
+        .setLabel('Remove All Keys')
+        .setStyle(ButtonStyle.Danger)
     );
     
     // Send the response
     await interaction.reply({
       embeds: [embed],
-      components: [row],
+      components: [primaryRow, secondaryRow, utilityRow],
       ephemeral: true
     });
     
@@ -127,14 +151,14 @@ const apikeyCommand = {
     
     collector.on('collect', async i => {
       // Handle the button interactions
-      if (i.customId === 'apikey_set' || i.customId === 'apikey_update') {
-        // Show API key input modal
+      if (i.customId === 'apikey_torn') {
+        // Show Torn API key input modal
         const modal = new ModalBuilder()
-          .setCustomId('apikey_modal')
+          .setCustomId('apikey_torn_modal')
           .setTitle('Enter Your Torn API Key');
         
         const apiKeyInput = new TextInputBuilder()
-          .setCustomId('apikey_input')
+          .setCustomId('torn_key_input')
           .setLabel('Your Torn API Key')
           .setPlaceholder('Enter your 16-character API key here')
           .setStyle(TextInputStyle.Short)
@@ -146,56 +170,62 @@ const apikeyCommand = {
         modal.addComponents(actionRow);
         
         await i.showModal(modal);
+      }
+      else if (i.customId === 'apikey_yata') {
+        // Show YATA API key input modal
+        const modal = new ModalBuilder()
+          .setCustomId('apikey_yata_modal')
+          .setTitle('Enter Your YATA API Key');
         
-        // Wait for modal submission
-        try {
-          const modalSubmission = await i.awaitModalSubmit({
-            time: 120000, // 2 minutes to submit
-            filter: i => i.customId === 'apikey_modal'
-          });
-          
-          const apiKey = modalSubmission.fields.getTextInputValue('apikey_input');
-          
-          // Store the key
-          userKeys[interaction.user.id] = {
-            key: apiKey,
-            dateAdded: new Date().toISOString()
-          };
-          
-          fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys), 'utf8');
-          
-          // Send confirmation
-          await modalSubmission.reply({
-            content: '✅ Your API key has been securely stored! Run `/apikey` again to see its status.',
-            ephemeral: true
-          });
-          
-          log(`User ${interaction.user.tag} ${i.customId === 'apikey_set' ? 'set' : 'updated'} their API key`);
-          
-        } catch (error) {
-          // Modal timed out or errored
-          if (error.code === 'InteractionCollectorError') {
-            log(`API key modal timed out for ${interaction.user.tag}`);
-          } else {
-            logError('Error in API key modal submission:', error);
-          }
-        }
-      } 
+        const apiKeyInput = new TextInputBuilder()
+          .setCustomId('yata_key_input')
+          .setLabel('Your YATA API Key')
+          .setPlaceholder('Enter your YATA API key here')
+          .setStyle(TextInputStyle.Short)
+          .setMinLength(10)
+          .setMaxLength(64)
+          .setRequired(true);
+        
+        const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
+        modal.addComponents(actionRow);
+        
+        await i.showModal(modal);
+      }
+      else if (i.customId === 'apikey_tornstats') {
+        // Show TornStats API key input modal
+        const modal = new ModalBuilder()
+          .setCustomId('apikey_tornstats_modal')
+          .setTitle('Enter Your TornStats API Key');
+        
+        const apiKeyInput = new TextInputBuilder()
+          .setCustomId('tornstats_key_input')
+          .setLabel('Your TornStats API Key')
+          .setPlaceholder('Enter your TornStats API key here')
+          .setStyle(TextInputStyle.Short)
+          .setMinLength(10)
+          .setMaxLength(64)
+          .setRequired(true);
+        
+        const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
+        modal.addComponents(actionRow);
+        
+        await i.showModal(modal);
+      }
       else if (i.customId === 'apikey_remove') {
-        // Remove the API key
+        // Remove all API keys
         if (userKeys[interaction.user.id]) {
           delete userKeys[interaction.user.id];
-          fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys), 'utf8');
+          fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
           
           await i.reply({
-            content: '✅ Your API key has been removed from storage.',
+            content: '✅ All your API keys have been removed from storage.',
             ephemeral: true
           });
           
-          log(`User ${interaction.user.tag} removed their API key`);
+          log(`User ${interaction.user.tag} removed all API keys`);
         } else {
           await i.reply({
-            content: '❓ You don\'t have an API key stored with this bot.',
+            content: '❓ You don\'t have any API keys stored with this bot.',
             ephemeral: true
           });
         }
@@ -203,17 +233,28 @@ const apikeyCommand = {
       else if (i.customId === 'apikey_help') {
         // Show API key help
         const helpEmbed = new EmbedBuilder()
-          .setTitle('📋 How to Get Your Torn API Key')
+          .setTitle('📋 API Keys Information')
           .setColor(BOT_CONFIG.color)
           .setDescription(
+            '**This bot can integrate with multiple Torn-related services:**\n\n' +
+            '**Torn API Key** (Required)\n' +
             '1. Log in to [Torn](https://www.torn.com)\n' +
             '2. Go to Settings (gear icon in the top right)\n' +
             '3. Click on the "API Key" tab\n' +
-            '4. Generate a new key with permissions for: `public, stats, battlestats, personalstats, profile`\n' +
-            '5. Copy your key and use it with this bot\n\n' +
-            'ℹ️ Your API key is kept private and is only used to fetch your data when you request it.'
+            '4. Generate a new key with permissions for: `public, stats, battlestats, personalstats, profile`\n\n' +
+            '**YATA API Key** (Optional)\n' +
+            '1. Log in to [YATA](https://yata.yt)\n' +
+            '2. Go to your Profile\n' +
+            '3. Find the "API Keys" section\n' +
+            '4. Copy your key or generate a new one\n\n' +
+            '**TornStats API Key** (Optional)\n' +
+            '1. Log in to [TornStats](https://tornstats.com)\n' +
+            '2. Go to your Settings\n' +
+            '3. Find the "API Key" section\n' +
+            '4. Copy your key or generate a new one\n\n' +
+            '**All keys are kept private** and are only used to fetch your data when you request it.'
           )
-          .setFooter({ text: 'Never share your API key with people you don\'t trust' });
+          .setFooter({ text: 'Never share your API keys with people you don\'t trust' });
         
         await i.reply({
           embeds: [helpEmbed],
@@ -225,17 +266,125 @@ const apikeyCommand = {
     collector.on('end', collected => {
       log(`API key button collector ended, ${collected.size} interactions processed`);
     });
+  },
+  
+  /**
+   * Handle modal submissions for apikey command
+   * @param {ModalSubmitInteraction} interaction - Modal interaction
+   * @param {Client} client - Discord client
+   */
+  async handleModal(interaction, client) {
+    const userId = interaction.user.id;
+    
+    if (interaction.customId === 'apikey_torn_modal') {
+      const tornKey = interaction.fields.getTextInputValue('torn_key_input');
+      
+      try {
+        // Validate the key
+        const accessLevel = await checkApiKeyLevel(tornKey);
+        
+        // Ensure user has a storage object
+        if (!userKeys[userId]) {
+          userKeys[userId] = {};
+        }
+        
+        // Store the key
+        userKeys[userId].torn = tornKey;
+        userKeys[userId].dateAdded = new Date().toISOString();
+        fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+        
+        await interaction.reply({
+          content: `✅ Your Torn API key has been successfully saved! Access level: ${accessLevel}`,
+          ephemeral: true
+        });
+        
+        log(`User ${interaction.user.tag} set their Torn API key`);
+      } catch (error) {
+        // If we can't validate with the API, do a basic pattern check
+        const simpleAccessLevel = getUserAccessLevel(tornKey);
+        
+        if (simpleAccessLevel !== 'Invalid Format') {
+          // Store the key anyway
+          if (!userKeys[userId]) {
+            userKeys[userId] = {};
+          }
+          userKeys[userId].torn = tornKey;
+          userKeys[userId].dateAdded = new Date().toISOString();
+          fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+          
+          await interaction.reply({
+            content: `⚠️ Your Torn API key has been saved, but I couldn't validate it. Estimated access level: ${simpleAccessLevel}`,
+            ephemeral: true
+          });
+          
+          log(`User ${interaction.user.tag} set their Torn API key (unvalidated)`);
+        } else {
+          await interaction.reply({
+            content: '❌ Invalid API key format. Please check your key and try again.',
+            ephemeral: true
+          });
+        }
+      }
+    }
+    else if (interaction.customId === 'apikey_yata_modal') {
+      const yataKey = interaction.fields.getTextInputValue('yata_key_input');
+      
+      // Ensure user has a storage object
+      if (!userKeys[userId]) {
+        userKeys[userId] = {};
+      }
+      
+      // Store the key
+      userKeys[userId].yata = yataKey;
+      fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+      
+      await interaction.reply({
+        content: '✅ Your YATA API key has been successfully saved!',
+        ephemeral: true
+      });
+      
+      log(`User ${interaction.user.tag} set their YATA API key`);
+    }
+    else if (interaction.customId === 'apikey_tornstats_modal') {
+      const tornstatsKey = interaction.fields.getTextInputValue('tornstats_key_input');
+      
+      // Ensure user has a storage object
+      if (!userKeys[userId]) {
+        userKeys[userId] = {};
+      }
+      
+      // Store the key
+      userKeys[userId].tornstats = tornstatsKey;
+      fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+      
+      await interaction.reply({
+        content: '✅ Your TornStats API key has been successfully saved!',
+        ephemeral: true
+      });
+      
+      log(`User ${interaction.user.tag} set their TornStats API key`);
+    }
   }
 };
 
 /**
  * Get user API key if stored
  * @param {string} userId - Discord user ID
+ * @param {string} keyType - Type of API key to get ('torn', 'yata', 'tornstats')
  * @returns {string|null} API key or null if not found
  */
-function getUserApiKey(userId) {
-  const userKey = userKeys[userId];
-  return userKey ? userKey.key : null;
+function getUserApiKey(userId, keyType = 'torn') {
+  const userData = userKeys[userId];
+  if (!userData) {
+    return null;
+  }
+  
+  // Handle old format for backward compatibility
+  if (keyType === 'torn' && userData.key && !userData.torn) {
+    return userData.key;
+  }
+  
+  return userData[keyType] || null;
 }
 
 /**
@@ -276,10 +425,31 @@ async function checkApiKeyLevel(apiKey) {
  * @returns {string} Access level description
  */
 function getUserAccessLevel(apiKey) {
+  if (!apiKey || typeof apiKey !== 'string') {
+    return 'Invalid Format';
+  }
+  
   if (apiKey.length === 16) {
     return 'Standard API Key';
   }
   return 'Unknown Format';
+}
+
+/**
+ * Mask API key for display
+ * @param {string} apiKey - API key to mask
+ * @returns {string} Masked API key
+ */
+function maskApiKey(apiKey) {
+  if (!apiKey || typeof apiKey !== 'string') {
+    return '';
+  }
+  
+  if (apiKey.length <= 8) {
+    return '****' + apiKey.slice(-4);
+  }
+  
+  return apiKey.slice(0, 4) + '****' + apiKey.slice(-4);
 }
 
 module.exports = { 
