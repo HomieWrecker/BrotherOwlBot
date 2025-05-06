@@ -27,7 +27,8 @@ async function getPlayerBattleStats(playerId, apiKey) {
       calculatedStats: {
         totalBattleStats: calculateTotalBattleStats(apiData),
         estimatedActivity: estimatePlayerActivity(apiData),
-        winProbability: calculateWinProbability(apiData)
+        // Skip winProbability calculation as it requires opponent stats
+        winProbability: 0.5 // Default value when no opponent is specified
       }
     };
     
@@ -98,11 +99,29 @@ async function extractWebContent(url) {
  * @returns {number} Total battle stats
  */
 function calculateTotalBattleStats(apiData) {
-  if (!apiData || !apiData.strength || !apiData.defense || !apiData.speed || !apiData.dexterity) {
+  if (!apiData) {
     return 0;
   }
   
-  return apiData.strength + apiData.defense + apiData.speed + apiData.dexterity;
+  // Handle both regular apiData and battlestats structure
+  let strength = apiData.strength;
+  let defense = apiData.defense;
+  let speed = apiData.speed;
+  let dexterity = apiData.dexterity;
+  
+  // Check if stats are in a battlestats sub-object
+  if (apiData.battlestats) {
+    strength = apiData.battlestats.strength;
+    defense = apiData.battlestats.defense;
+    speed = apiData.battlestats.speed;
+    dexterity = apiData.battlestats.dexterity;
+  }
+  
+  if (!strength || !defense || !speed || !dexterity) {
+    return 0;
+  }
+  
+  return strength + defense + speed + dexterity;
 }
 
 /**
@@ -111,11 +130,40 @@ function calculateTotalBattleStats(apiData) {
  * @returns {string} Estimated activity level
  */
 function estimatePlayerActivity(apiData) {
-  if (!apiData || !apiData.last_action) {
+  if (!apiData) {
     return 'Unknown';
   }
   
-  const lastActionTimestamp = new Date(apiData.last_action.timestamp * 1000);
+  // Handle different possible API response structures
+  let lastAction = apiData.last_action;
+  
+  // Try to extract the last_action from different possible locations
+  if (!lastAction && apiData.profile && apiData.profile.last_action) {
+    lastAction = apiData.profile.last_action;
+  }
+  
+  if (!lastAction || !lastAction.timestamp) {
+    // Try to interpret the last_action if it's a string like "X minutes/hours/days ago"
+    if (typeof lastAction === 'string' || (lastAction && typeof lastAction.status === 'string')) {
+      const statusText = typeof lastAction === 'string' ? lastAction : lastAction.status;
+      
+      if (statusText.includes('minute')) {
+        return 'Very Active';
+      } else if (statusText.includes('hour')) {
+        return 'Active';
+      } else if (statusText.includes('day') && parseInt(statusText) <= 1) {
+        return 'Daily';
+      } else if (statusText.includes('day') && parseInt(statusText) <= 3) {
+        return 'Semi-Active';
+      } else {
+        return 'Inactive';
+      }
+    }
+    
+    return 'Unknown';
+  }
+  
+  const lastActionTimestamp = new Date(lastAction.timestamp * 1000);
   const now = new Date();
   const hoursSinceLastAction = (now - lastActionTimestamp) / (1000 * 60 * 60);
   

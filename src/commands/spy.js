@@ -360,18 +360,32 @@ async function handlePlayerSpy(interaction, client, apiKey) {
       { name: 'Faction', value: playerStats.faction?.faction_name ? `${playerStats.faction.faction_name} [${playerStats.faction.faction_id}]` : 'None', inline: true }
     );
     
-    // Add battle stats if available
-    if (playerStats.strength || playerStats.defense || playerStats.speed || playerStats.dexterity) {
-      const totalStats = (playerStats.strength || 0) + (playerStats.defense || 0) + 
-                          (playerStats.speed || 0) + (playerStats.dexterity || 0);
+    // Handle battle stats from different possible API structures
+    const battleStats = playerStats.battlestats || playerStats;
+    const strength = battleStats.strength;
+    const defense = battleStats.defense;
+    const speed = battleStats.speed;
+    const dexterity = battleStats.dexterity;
+    
+    // Check if we have any stats available
+    if (strength || defense || speed || dexterity) {
+      const totalStats = (strength || 0) + (defense || 0) + (speed || 0) + (dexterity || 0);
       
       playerEmbed.addFields(
         { name: 'Battle Stats', value: 
-          `💪 Strength: ${playerStats.strength ? playerStats.strength.toLocaleString() : 'Unknown'}\n` +
-          `🛡️ Defense: ${playerStats.defense ? playerStats.defense.toLocaleString() : 'Unknown'}\n` +
-          `🏃‍♂️ Speed: ${playerStats.speed ? playerStats.speed.toLocaleString() : 'Unknown'}\n` +
-          `🎯 Dexterity: ${playerStats.dexterity ? playerStats.dexterity.toLocaleString() : 'Unknown'}\n` +
+          `💪 Strength: ${strength ? strength.toLocaleString() : 'Unknown'}\n` +
+          `🛡️ Defense: ${defense ? defense.toLocaleString() : 'Unknown'}\n` +
+          `🏃‍♂️ Speed: ${speed ? speed.toLocaleString() : 'Unknown'}\n` +
+          `🎯 Dexterity: ${dexterity ? dexterity.toLocaleString() : 'Unknown'}\n` +
           `🔥 Total: ${totalStats ? totalStats.toLocaleString() : 'Unknown'}`
+        }
+      );
+    } else if (playerStats.calculatedStats && playerStats.calculatedStats.totalBattleStats) {
+      // If we have the calculated total but not individual stats
+      playerEmbed.addFields(
+        { name: 'Battle Stats', value: 
+          `Total Battle Stats: ${playerStats.calculatedStats.totalBattleStats.toLocaleString()}\n` +
+          `(Individual stats not visible with current API key permissions)`
         }
       );
     } else {
@@ -381,9 +395,21 @@ async function handlePlayerSpy(interaction, client, apiKey) {
     }
     
     // Add activity information
+    // Handle different API response structures for last_action
+    let lastAction = 'Unknown';
+    if (playerStats.last_action && playerStats.last_action.status) {
+      lastAction = playerStats.last_action.status;
+    } else if (playerStats.last_action && typeof playerStats.last_action === 'string') {
+      lastAction = playerStats.last_action;
+    } else if (playerStats.profile && playerStats.profile.last_action) {
+      lastAction = typeof playerStats.profile.last_action === 'string' ? 
+                  playerStats.profile.last_action : 
+                  playerStats.profile.last_action.status || 'Unknown';
+    }
+    
     playerEmbed.addFields(
       { name: 'Activity', value: 
-        `Last Action: ${playerStats.last_action?.status || 'Unknown'}\n` +
+        `Last Action: ${lastAction}\n` +
         `Activity Level: ${playerStats.calculatedStats?.estimatedActivity || 'Unknown'}`
       }
     );
