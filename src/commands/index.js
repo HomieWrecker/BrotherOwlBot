@@ -117,6 +117,8 @@ if (factionstatsCommand) commands.push(factionstatsCommand);
 if (warcountdownCommand) commands.push(warcountdownCommand);
 if (warstrategyCommand) commands.push(warstrategyCommand);
 if (botpermissionsCommand) commands.push(botpermissionsCommand);
+if (spyCommand) commands.push(spyCommand);
+if (targetfinderCommand) commands.push(targetfinderCommand);
 
 /**
  * Registers all slash commands with Discord API
