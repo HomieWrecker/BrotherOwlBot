@@ -459,6 +459,25 @@ function startBot() {
             await chainsheetCommand.handleModal(interaction, client);
           }
         }
+        // Handle war strategy modals
+        else if (interaction.customId.startsWith('warstrategy_')) {
+          // Try to find war strategy command
+          const warstrategyCommand = client.commands.get('warstrategy');
+          if (warstrategyCommand && warstrategyCommand.handleModal) {
+            // Use a separate try-catch to ensure war strategy modals don't affect other functionality
+            try {
+              await warstrategyCommand.handleModal(interaction, client);
+            } catch (strategyError) {
+              logError('Error in war strategy modal handler (isolated):', strategyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your war strategy submission. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling modal submission:', error);
         
@@ -472,6 +491,64 @@ function startBot() {
           }
         } catch (replyError) {
           logError('Error sending modal error reply:', replyError);
+        }
+      }
+    }
+    
+    // Handle select menu interactions
+    if (interaction.isStringSelectMenu() || interaction.isRoleSelectMenu()) {
+      try {
+        // Handle permissions select menus
+        if (interaction.customId.startsWith('permissions_')) {
+          // Try to find bot permissions command
+          const botpermissionsCommand = client.commands.get('botpermissions');
+          if (botpermissionsCommand && botpermissionsCommand.handleSelectMenu) {
+            // Use a separate try-catch to ensure permissions select menus don't affect other functionality
+            try {
+              await botpermissionsCommand.handleSelectMenu(interaction, client);
+            } catch (permissionsError) {
+              logError('Error in bot permissions select menu handler (isolated):', permissionsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your selection. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle war strategy select menus
+        else if (interaction.customId.startsWith('warstrategy_')) {
+          // Try to find war strategy command
+          const warstrategyCommand = client.commands.get('warstrategy');
+          if (warstrategyCommand && warstrategyCommand.handleSelectMenu) {
+            // Use a separate try-catch to ensure war strategy select menus don't affect other functionality
+            try {
+              await warstrategyCommand.handleSelectMenu(interaction, client);
+            } catch (strategyError) {
+              logError('Error in war strategy select menu handler (isolated):', strategyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your selection. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logError('Error handling select menu interaction:', error);
+        
+        // Try to respond with an error
+        try {
+          if (!interaction.replied) {
+            await interaction.reply({
+              content: '❌ There was an error handling your selection.',
+              ephemeral: true
+            });
+          }
+        } catch (replyError) {
+          logError('Error sending select menu error reply:', replyError);
         }
       }
     }

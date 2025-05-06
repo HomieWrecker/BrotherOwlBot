@@ -59,14 +59,14 @@ const warstrategyCommand = {
       subcommand
         .setName('notifications')
         .setDescription('Configure war strategy notifications')
-        .addChannelOption(option =>
-          option.setName('channel')
-            .setDescription('Channel for strategy notifications')
-            .setRequired(false))
         .addBooleanOption(option =>
           option.setName('enabled')
             .setDescription('Enable or disable notifications')
             .setRequired(true))
+        .addChannelOption(option =>
+          option.setName('channel')
+            .setDescription('Channel for strategy notifications')
+            .setRequired(false))
         .addBooleanOption(option =>
           option.setName('war_start')
             .setDescription('Notifications for war start')

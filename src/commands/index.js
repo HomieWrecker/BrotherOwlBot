@@ -6,7 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -66,6 +66,22 @@ try {
   logError('Error loading war countdown command:', error);
 }
 
+try {
+  warstrategyCommand = require('./warstrategy').warstrategyCommand;
+  log('Loaded war strategy command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading war strategy command:', error);
+}
+
+try {
+  botpermissionsCommand = require('./botpermissions').botpermissionsCommand;
+  log('Loaded bot permissions command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading bot permissions command:', error);
+}
+
 // Collection of commands to register
 const commands = [
   statusCommand,
@@ -83,6 +99,8 @@ if (chainsheetCommand) commands.push(chainsheetCommand);
 if (welcomeCommand) commands.push(welcomeCommand);
 if (factionstatsCommand) commands.push(factionstatsCommand);
 if (warcountdownCommand) commands.push(warcountdownCommand);
+if (warstrategyCommand) commands.push(warstrategyCommand);
+if (botpermissionsCommand) commands.push(botpermissionsCommand);
 
 /**
  * Registers all slash commands with Discord API
