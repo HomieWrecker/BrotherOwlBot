@@ -1,0 +1,39 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "discord_bot_review"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BrotherOwl Bot"
+
+[[workflows.workflow]]
+name = "discord_bot_review"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "ls -la && npm list || echo \"No packages installed yet\" && echo \"Bot structure:\" && find src -type f | sort"
+
+[[workflows.workflow]]
+name = "BrotherOwl Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install discord.js ws && node index.js"
+
+[deployment]
+run = ["sh", "-c", "npm install discord.js ws && node index.js"]
