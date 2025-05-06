@@ -135,6 +135,23 @@ async function handleFactionSpy(interaction, client, apiKey) {
     // Get faction members with battle stats
     const membersData = await getFactionMembersStats(factionId, apiKey);
     
+    // Check for error in response
+    if (membersData.error) {
+      let errorMessage = membersData.error.error || 'Unknown error';
+      
+      // Special handling for common errors
+      if (membersData.error.code === 7) {
+        errorMessage = `Faction ID ${factionId} doesn't exist or has been deleted.`;
+      } else if (membersData.error.code === 5) {
+        errorMessage = `You don't have permission to view this faction or you've provided an invalid API key.`;
+      }
+      
+      return interaction.followUp({
+        content: `❌ Error fetching faction data: ${errorMessage}`,
+        ephemeral: true
+      });
+    }
+    
     if (!membersData || membersData.length === 0) {
       return interaction.followUp({
         content: '❌ No data found for this faction, or you don\'t have access to view their members.',
@@ -147,8 +164,17 @@ async function handleFactionSpy(interaction, client, apiKey) {
     const factionData = await factionResponse.json();
     
     if (factionData.error) {
+      let errorMessage = factionData.error.error || 'Unknown error';
+      
+      // Special handling for common errors
+      if (factionData.error.code === 7) {
+        errorMessage = `Faction ID ${factionId} doesn't exist or has been deleted.`;
+      } else if (factionData.error.code === 5) {
+        errorMessage = `You don't have permission to view this faction or you've provided an invalid API key.`;
+      }
+      
       return interaction.followUp({
-        content: `❌ Error fetching faction data: ${factionData.error.error}`,
+        content: `❌ Error fetching faction data: ${errorMessage}`,
         ephemeral: true
       });
     }
@@ -313,9 +339,24 @@ async function handlePlayerSpy(interaction, client, apiKey) {
     // Get player battle stats and information
     const playerStats = await getPlayerBattleStats(playerId, apiKey);
     
-    if (!playerStats || playerStats.error) {
+    if (!playerStats) {
+      // Handle different error cases
       return interaction.followUp({
-        content: `❌ Error fetching player data: ${playerStats?.error?.error || 'Unknown error'}`,
+        content: `❌ Error fetching player data: Player ID ${playerId} not found or doesn't exist. Please check the ID and try again.`,
+        ephemeral: true
+      });
+    }
+    
+    if (playerStats.error) {
+      let errorMessage = playerStats.error.error || 'Unknown error';
+      
+      // Special handling for common errors
+      if (playerStats.error.code === 7) {
+        errorMessage = `Player ID ${playerId} doesn't exist or has been deleted.`;
+      }
+      
+      return interaction.followUp({
+        content: `❌ Error fetching player data: ${errorMessage}`,
         ephemeral: true
       });
     }

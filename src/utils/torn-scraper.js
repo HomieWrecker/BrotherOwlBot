@@ -20,6 +20,12 @@ async function getPlayerBattleStats(playerId, apiKey) {
     // First try to get data from Torn API
     const apiData = await fetchPlayerApiData(playerId, apiKey);
     
+    // Check if we received an error object
+    if (apiData.error) {
+      // Just pass it through
+      return apiData;
+    }
+    
     // Combine with additional data sources
     const enhancedData = {
       ...apiData,
@@ -34,7 +40,12 @@ async function getPlayerBattleStats(playerId, apiKey) {
     return enhancedData;
   } catch (error) {
     logError(`Error getting battle stats for player ${playerId}:`, error);
-    return null;
+    return {
+      error: {
+        code: 0,
+        error: error.message || "Unknown error occurred"
+      }
+    };
   }
 }
 
@@ -50,13 +61,26 @@ async function fetchPlayerApiData(playerId, apiKey) {
     const data = await response.json();
     
     if (data.error) {
-      throw new Error(`Torn API error: ${data.error.code} - ${data.error.error}`);
+      // Return error object instead of throwing to allow better error handling upstream
+      logError(`API error for player ${playerId}: ${data.error.code} - ${data.error.error}`);
+      return {
+        error: {
+          code: data.error.code,
+          error: data.error.error
+        }
+      };
     }
     
     return data;
   } catch (error) {
     logError(`Error fetching player data from API:`, error);
-    throw error;
+    // For network errors, etc. create a generic error object
+    return {
+      error: {
+        code: 0,
+        error: error.message || "Network error occurred"
+      }
+    };
   }
 }
 
@@ -247,7 +271,23 @@ async function getFactionMembersStats(factionId, apiKey) {
     const data = await response.json();
     
     if (data.error) {
-      throw new Error(`Torn API error: ${data.error.code} - ${data.error.error}`);
+      // Return error object instead of throwing
+      return {
+        error: {
+          code: data.error.code,
+          error: data.error.error
+        }
+      };
+    }
+    
+    // Check if we have members
+    if (!data.members || Object.keys(data.members).length === 0) {
+      return {
+        error: {
+          code: 0,
+          error: "No faction members found"
+        }
+      };
     }
     
     // Extract members and create enhanced data array
@@ -261,7 +301,7 @@ async function getFactionMembersStats(factionId, apiKey) {
         new Promise(resolve => setTimeout(resolve, 200 * memberPromises.length))
           .then(() => getPlayerBattleStats(memberId, apiKey))
           .then(stats => {
-            if (stats) {
+            if (stats && !stats.error) {
               members.push({
                 id: memberId,
                 name: memberData.name,
@@ -289,7 +329,12 @@ async function getFactionMembersStats(factionId, apiKey) {
     return members;
   } catch (error) {
     logError(`Error getting faction members stats:`, error);
-    return [];
+    return {
+      error: {
+        code: 0,
+        error: error.message || "Unknown error occurred"
+      }
+    };
   }
 }
 
