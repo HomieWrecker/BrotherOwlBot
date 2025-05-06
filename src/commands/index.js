@@ -1,19 +1,15 @@
 const { REST, Routes } = require('discord.js');
 const { log, logError } = require('../utils/logger');
-const { chainCommand } = require('./chain');
 const { statusCommand } = require('./status');
-const { membersCommand } = require('./members');
 const { helpCommand } = require('./help');
-const { activityCommand } = require('./activity');
-const { statsCommand } = require('./stats');
+const { apikeyCommand } = require('./apikey');
+const { playerStatsCommand } = require('./playerstats');
 
 // Collection of commands to register
 const commands = [
-  chainCommand,
   statusCommand,
-  membersCommand,
-  activityCommand,
-  statsCommand,
+  apikeyCommand,
+  playerStatsCommand,
   helpCommand
 ];
 

@@ -12,6 +12,14 @@ const helpCommand = {
     // Get all available commands from the client's commands collection
     const commands = Array.from(client.commands.values());
     
+    // Add details for each command if needed
+    const commandDetails = {
+      'apikey': 'Set or manage your Torn API key for personal stats tracking',
+      'playerstats': 'View your stats from different sources and track growth over time',
+      'status': 'Check the bot and API connection status',
+      'help': 'Get help with available commands'
+    };
+    
     // Create rich embed for help data
     const embed = new EmbedBuilder()
       .setTitle('🦉 BrotherOwl Help')
@@ -29,7 +37,7 @@ const helpCommand = {
     
     // Add footer with version info
     embed.setFooter({ 
-      text: `BrotherOwl v${BOT_CONFIG.version}`
+      text: `${BOT_CONFIG.name} v${BOT_CONFIG.version}`
     });
     
     await interaction.reply({ embeds: [embed], ephemeral: true });

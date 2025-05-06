@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { formatDate } = require('../utils/formatting');
 const { log } = require('../utils/logger');
 const { BOT_CONFIG } = require('../config');
+const { SERVICES, checkServiceAvailability } = require('../services/integrations');
 
 // Status command - provides information about the bot and API status
 const statusCommand = {
@@ -46,6 +47,43 @@ const statusCommand = {
       { name: 'Server Count', value: `${client.guilds.cache.size}`, inline: true },
       { name: 'Commands', value: `${client.commands.size}`, inline: true }
     );
+    
+    // Check external service availability
+    try {
+      const serviceStatuses = [];
+      
+      // Check each service availability
+      const tornStatus = await checkServiceAvailability(SERVICES.TORN);
+      serviceStatuses.push(`Torn API: ${tornStatus ? '✅' : '❌'}`);
+      
+      const yataStatus = await checkServiceAvailability(SERVICES.YATA);
+      serviceStatuses.push(`YATA: ${yataStatus ? '✅' : '❌'}`);
+      
+      const anarchyStatus = await checkServiceAvailability(SERVICES.ANARCHY);
+      serviceStatuses.push(`Anarchy: ${anarchyStatus ? '✅' : '❌'}`);
+      
+      const tornstatsStatus = await checkServiceAvailability(SERVICES.TORNSTATS);
+      serviceStatuses.push(`TornStats: ${tornstatsStatus ? '✅' : '❌'}`);
+      
+      const torntoolsStatus = await checkServiceAvailability(SERVICES.TORNTOOLS);
+      serviceStatuses.push(`TornTools: ${torntoolsStatus ? '✅' : '❌'}`);
+      
+      const tortoiseStatus = await checkServiceAvailability(SERVICES.TORTOISE);
+      serviceStatuses.push(`Tortoise: ${tortoiseStatus ? '✅' : '❌'}`);
+      
+      // Add external services status field
+      embed.addFields({
+        name: 'External Services',
+        value: serviceStatuses.join('\n'),
+        inline: false
+      });
+    } catch (error) {
+      embed.addFields({
+        name: 'External Services',
+        value: 'Error checking service availability',
+        inline: false
+      });
+    }
     
     embed.setFooter({ 
       text: `${BOT_CONFIG.name} v${BOT_CONFIG.version}`
