@@ -51,6 +51,15 @@ try {
   // Silently continue if service isn't available
 }
 
+// Load war countdown service if available
+let warCountdownService = null;
+try {
+  warCountdownService = require('./services/war-countdown');
+  log('War countdown service loaded');
+} catch (error) {
+  // Silently continue if service isn't available
+}
+
 // Discord client with required intents
 const client = new Client({
   intents: [
@@ -156,6 +165,18 @@ function startBot() {
         logError('Failed to initialize stats tracking service:', error);
         // Silently continue if service fails to start
         // This ensures that errors in the stats tracking service don't affect core bot functionality
+      }
+    }
+    
+    // Initialize war countdown service if available
+    if (warCountdownService && warCountdownService.initWarCountdownService) {
+      try {
+        warCountdownService.initWarCountdownService(client);
+        log('War countdown service initialized');
+      } catch (error) {
+        logError('Failed to initialize war countdown service:', error);
+        // Silently continue if service fails to start
+        // This ensures that errors in the war countdown service don't affect core bot functionality
       }
     }
   });
@@ -300,6 +321,25 @@ function startBot() {
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing this faction stats action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle war countdown buttons
+        else if (interaction.customId.startsWith('warcountdown_')) {
+          // Try to find war countdown command
+          const warcountdownCommand = client.commands.get('warcountdown');
+          if (warcountdownCommand && warcountdownCommand.handleButton) {
+            // Use a separate try-catch to ensure war countdown buttons don't affect other functionality
+            try {
+              await warcountdownCommand.handleButton(interaction, client);
+            } catch (countdownError) {
+              logError('Error in war countdown button handler (isolated):', countdownError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this war countdown action. This error has been logged and will not affect other bot functionality.',
                   ephemeral: true
                 }).catch(() => {});
               }
