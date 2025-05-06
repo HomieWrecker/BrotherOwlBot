@@ -38,6 +38,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm install discord.js ws && node index.js"
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "BrotherOwl Bot 24/7"
@@ -46,6 +47,7 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node index.js"
+waitForPort = 3001
 
 [deployment]
 run = ["sh", "-c", "npm install discord.js ws && node index.js"]

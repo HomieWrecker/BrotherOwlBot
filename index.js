@@ -19,8 +19,9 @@ if (!fs.existsSync(dataDir)) {
 
 // Automatic restart logic for resilience
 let restartAttempts = 0;
-const MAX_RESTART_ATTEMPTS = 5;
-const RESTART_DELAY = 60000; // 1 minute
+const MAX_RESTART_ATTEMPTS = 10; // Increased from 5
+const RESTART_DELAY = 30000; // 30 seconds (reduced from 60 seconds)
+const RESTART_RESET_TIMEOUT = 3600000; // 1 hour
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {

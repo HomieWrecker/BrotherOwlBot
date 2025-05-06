@@ -39,8 +39,8 @@ const spyCommand = {
         .setName('player')
         .setDescription('Spy on an individual player to see their stats and activity')
         .addStringOption(option => 
-          option.setName('player_id')
-            .setDescription('The ID or name of the player to spy on')
+          option.setName('player_id_or_name')
+            .setDescription('Enter either a player ID (numbers only) or player name to spy on')
             .setRequired(true))),
 
   /**
@@ -286,45 +286,84 @@ async function handleFactionSpy(interaction, client, apiKey) {
  * @param {string} apiKey - User's Torn API key
  */
 async function handlePlayerSpy(interaction, client, apiKey) {
-  const playerInput = interaction.options.getString('player_id');
+  const playerInput = interaction.options.getString('player_id_or_name');
+  
+  if (!playerInput || playerInput.trim() === '') {
+    return interaction.followUp({
+      content: '❌ Please provide a valid player ID or name.',
+      ephemeral: true
+    });
+  }
   
   try {
     // Check if input is numeric (ID) or text (name)
-    const isPlayerId = /^\d+$/.test(playerInput);
-    let playerId = playerInput;
+    const isPlayerId = /^\d+$/.test(playerInput.trim());
+    let playerId = isPlayerId ? playerInput.trim() : null;
+    let playerName = isPlayerId ? null : playerInput.trim();
     
-    // Convert name to ID if necessary
+    // If input is a name, convert to ID using the lookup API
     if (!isPlayerId) {
       await interaction.followUp({
-        content: `🔍 Looking up player named "${playerInput}"...`,
+        content: `🔍 Looking up player named "${playerName}"...`,
         ephemeral: true
       });
       
-      // Search for player by name
+      // Search for player by name using Torn's lookup API
       try {
-        const searchResponse = await fetch(`https://api.torn.com/user/${apiKey}?selections=lookup&q=${encodeURIComponent(playerInput)}`);
+        const searchResponse = await fetch(`https://api.torn.com/user/${apiKey}?selections=lookup&q=${encodeURIComponent(playerName)}`);
         const searchData = await searchResponse.json();
         
+        // Handle API errors
         if (searchData.error) {
+          let errorMessage = searchData.error.error || 'Unknown error';
+          
+          if (searchData.error.code === 5) {
+            errorMessage = 'You don\'t have permission to search for players. Check that your API key has the correct permissions.';
+          } else if (searchData.error.code === 9) {
+            errorMessage = 'You are currently in a cooldown period. Please try again later.';
+          }
+          
           return interaction.followUp({
-            content: `❌ Error searching for player: ${searchData.error.error}`,
+            content: `❌ Error searching for player: ${errorMessage}`,
             ephemeral: true
           });
         }
         
+        // Check if we got any results
         if (!searchData.users || searchData.users.length === 0) {
           return interaction.followUp({
-            content: `❌ No players found matching "${playerInput}"`,
+            content: `❌ No players found matching "${playerName}". Try using their exact Torn name or player ID instead.`,
+            ephemeral: true
+          });
+        }
+        
+        // If we have multiple matches, show a list of the first few
+        if (searchData.users.length > 1) {
+          const matchCount = Math.min(searchData.users.length, 5); // Show up to 5 matches
+          let matchMessage = `📋 Found ${searchData.users.length} players matching "${playerName}". Using the first match.\n\nMatches:`;
+          
+          for (let i = 0; i < matchCount; i++) {
+            const user = searchData.users[i];
+            matchMessage += `\n${i+1}. ${user.name} [${user.user_id}]${i === 0 ? ' ✓' : ''}`;
+          }
+          
+          if (searchData.users.length > matchCount) {
+            matchMessage += `\n...and ${searchData.users.length - matchCount} more`;
+          }
+          
+          await interaction.followUp({
+            content: matchMessage,
             ephemeral: true
           });
         }
         
         // Use the first match
         playerId = searchData.users[0].user_id;
+        playerName = searchData.users[0].name;
       } catch (searchError) {
         logError('Error searching for player by name:', searchError);
         return interaction.followUp({
-          content: `❌ Failed to find player named "${playerInput}"`,
+          content: `❌ Failed to find player named "${playerName}". The service might be unavailable or rate limited.`,
           ephemeral: true
         });
       }
@@ -332,7 +371,9 @@ async function handlePlayerSpy(interaction, client, apiKey) {
     
     // Start gathering intelligence
     await interaction.followUp({
-      content: '🕵️ Gathering intelligence on player ID ' + playerId + '...',
+      content: playerName 
+        ? `🕵️ Gathering intelligence on ${playerName} [${playerId}]...`
+        : `🕵️ Gathering intelligence on player ID ${playerId}...`,
       ephemeral: true
     });
     
