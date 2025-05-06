@@ -414,6 +414,44 @@ function startBot() {
             }
           }
         }
+        // Handle API key buttons
+        else if (interaction.customId.startsWith('apikey_')) {
+          // Try to find apikey command
+          const apikeyCommand = client.commands.get('apikey');
+          if (apikeyCommand && apikeyCommand.handleButton) {
+            // Use a separate try-catch to ensure API key buttons don't affect other functionality
+            try {
+              await apikeyCommand.handleButton(interaction, client);
+            } catch (apikeyError) {
+              logError('Error in API key button handler (isolated):', apikeyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this API key action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle target finder buttons
+        else if (interaction.customId.startsWith('targetfinder_')) {
+          // Try to find targetfinder command
+          const targetfinderCommand = client.commands.get('targetfinder');
+          if (targetfinderCommand && targetfinderCommand.handleButton) {
+            // Use a separate try-catch to ensure target finder buttons don't affect other functionality
+            try {
+              await targetfinderCommand.handleButton(interaction, client);
+            } catch (targetfinderError) {
+              logError('Error in target finder button handler (isolated):', targetfinderError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this target finder action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
         
@@ -491,6 +529,25 @@ function startBot() {
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing your API key submission. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle target finder modals
+        else if (interaction.customId.startsWith('targetfinder_')) {
+          // Try to find targetfinder command
+          const targetfinderCommand = client.commands.get('targetfinder');
+          if (targetfinderCommand && targetfinderCommand.handleModal) {
+            // Use a separate try-catch to ensure target finder modals don't affect other functionality
+            try {
+              await targetfinderCommand.handleModal(interaction, client);
+            } catch (targetfinderError) {
+              logError('Error in target finder modal handler (isolated):', targetfinderError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your stats submission. This error has been logged and will not affect other bot functionality.',
                   ephemeral: true
                 }).catch(() => {});
               }

@@ -6,7 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -80,6 +80,22 @@ try {
 } catch (error) {
   // Silently continue if module doesn't exist
   logError('Error loading bot permissions command:', error);
+}
+
+try {
+  spyCommand = require('./spy');
+  log('Loaded spy command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading spy command:', error);
+}
+
+try {
+  targetfinderCommand = require('./targetfinder');
+  log('Loaded target finder command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading target finder command:', error);
 }
 
 // Collection of commands to register
