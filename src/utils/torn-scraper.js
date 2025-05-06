@@ -26,9 +26,8 @@ async function getPlayerBattleStats(playerId, apiKey) {
       // Add additional calculated fields
       calculatedStats: {
         totalBattleStats: calculateTotalBattleStats(apiData),
-        estimatedActivity: estimatePlayerActivity(apiData),
-        // Skip winProbability calculation as it requires opponent stats
-        winProbability: 0.5 // Default value when no opponent is specified
+        estimatedActivity: estimatePlayerActivity(apiData)
+        // No win probability - just focusing on stats
       }
     };
     
