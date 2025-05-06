@@ -5,6 +5,51 @@ const { helpCommand } = require('./help');
 const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
+// Try to load new commands without affecting existing functionality
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand;
+try {
+  factionCommand = require('./faction').factionCommand;
+  log('Loaded faction command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+}
+
+try {
+  attacksCommand = require('./attacks').attacksCommand;
+  log('Loaded attacks command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+}
+
+try {
+  bankCommand = require('./bank').bankCommand;
+  log('Loaded bank command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+}
+
+try {
+  eventsCommand = require('./events').eventsCommand;
+  log('Loaded events command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+}
+
+try {
+  chainsheetCommand = require('./chainsheet').chainsheetCommand;
+  log('Loaded chainsheet command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+}
+
+try {
+  welcomeCommand = require('./welcome').welcomeCommand;
+  log('Loaded welcome command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  // This ensures that if the welcome command has errors, it won't break the entire bot
+}
+
 // Collection of commands to register
 const commands = [
   statusCommand,
@@ -12,6 +57,14 @@ const commands = [
   playerStatsCommand,
   helpCommand
 ];
+
+// Add new commands if available
+if (factionCommand) commands.push(factionCommand);
+if (attacksCommand) commands.push(attacksCommand);
+if (bankCommand) commands.push(bankCommand);
+if (eventsCommand) commands.push(eventsCommand);
+if (chainsheetCommand) commands.push(chainsheetCommand);
+if (welcomeCommand) commands.push(welcomeCommand);
 
 /**
  * Registers all slash commands with Discord API

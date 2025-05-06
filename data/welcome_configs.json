@@ -1,0 +1,14 @@
+{
+  "1364221962548940831": {
+    "welcomeChannelId": "1364221962548940834",
+    "verificationChannelId": "1367352974548008980",
+    "logChannelId": "1364226551553458206",
+    "approverRoleId": "1367353646269988924",
+    "memberRoleId": "1367133192582205611",
+    "contractorRoleId": "1368357254423773184",
+    "allyRoleId": "1368357146886012989",
+    "traderRoleId": null,
+    "guestRoleId": "1367133282688565289",
+    "enabled": true
+  }
+}

@@ -2,6 +2,15 @@ const WebSocket = require('ws');
 const { log, logError, logWarning } = require('./utils/logger');
 const https = require('https');
 
+// Import chain monitor but without modifying existing imports
+let chainMonitor = null;
+try {
+  chainMonitor = require('./services/chain-monitor');
+  log('Chain monitoring service loaded');
+} catch (error) {
+  // Silently continue if the module doesn't exist
+}
+
 let ws = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 3; // Reduced WebSocket attempts
@@ -71,7 +80,23 @@ function startTornWS(callback) {
         
         // Add timestamp for when data was last received
         parsedData.lastUpdate = Date.now();
+        
+        // Process with callback (for main bot functionality)
         callback(parsedData);
+        
+        // Also process chain data with the chain monitor if available
+        if (chainMonitor && chainMonitor.processChainData) {
+          try {
+            // Pass through the client for Discord access
+            const client = global.discordClient;
+            if (client) {
+              chainMonitor.processChainData(client, parsedData);
+            }
+          } catch (error) {
+            // Silently continue if chain monitoring fails
+            // This ensures the main bot functionality isn't affected
+          }
+        }
       } catch (error) {
         logError('Error parsing WebSocket message:', error);
       }
@@ -163,10 +188,27 @@ function fetchChainDataFallback(callback) {
         // Format data to match WebSocket format
         const formattedData = { 
           chain: parsedData.chain || {},
+          faction: parsedData.faction || { ID: parsedData.ID },
           lastUpdate: Date.now(),
           source: 'fallback'
         };
+        
+        // Process with callback (for main bot functionality)
         callback(formattedData);
+        
+        // Also process chain data with the chain monitor if available
+        if (chainMonitor && chainMonitor.processChainData) {
+          try {
+            // Pass through the client for Discord access
+            const client = global.discordClient;
+            if (client) {
+              chainMonitor.processChainData(client, formattedData);
+            }
+          } catch (error) {
+            // Silently continue if chain monitoring fails
+            // This ensures the main bot functionality isn't affected
+          }
+        }
         
         // Schedule next update
         setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
