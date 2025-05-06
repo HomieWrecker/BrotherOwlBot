@@ -78,6 +78,15 @@ try {
   // Silently continue if service isn't available
 }
 
+// Load giveaway service if available
+let giveawayService = null;
+try {
+  giveawayService = require('./services/giveaway-service');
+  log('Giveaway service loaded');
+} catch (error) {
+  // Silently continue if service isn't available
+}
+
 // Discord client with required intents
 const client = new Client({
   intents: [
