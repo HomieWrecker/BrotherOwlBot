@@ -94,7 +94,10 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     // Additional intents for welcome system
-    GatewayIntentBits.GuildMembers // Needed to detect member join/leave events
+    GatewayIntentBits.GuildMembers, // Needed to detect member join/leave events
+    // Additional intents for giveaway system
+    GatewayIntentBits.GuildMessageReactions, // Needed for reaction-based giveaway entries
+    GatewayIntentBits.DirectMessages // For DM notifications to winners
   ]
 });
 
@@ -461,6 +464,25 @@ function startBot() {
             }
           }
         }
+        // Handle giveaway buttons
+        else if (interaction.customId.startsWith('giveaway_')) {
+          // Try to find giveaway command
+          const giveawayCommand = client.commands.get('giveaway');
+          if (giveawayCommand && giveawayCommand.handleButton) {
+            // Use a separate try-catch to ensure giveaway buttons don't affect other functionality
+            try {
+              await giveawayCommand.handleButton(interaction, client);
+            } catch (giveawayError) {
+              logError('Error in giveaway button handler (isolated):', giveawayError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this giveaway action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
         
@@ -563,6 +585,25 @@ function startBot() {
             }
           }
         }
+        // Handle giveaway modals
+        else if (interaction.customId.startsWith('giveaway_')) {
+          // Try to find giveaway command
+          const giveawayCommand = client.commands.get('giveaway');
+          if (giveawayCommand && giveawayCommand.handleModal) {
+            // Use a separate try-catch to ensure giveaway modals don't affect other functionality
+            try {
+              await giveawayCommand.handleModal(interaction, client);
+            } catch (giveawayError) {
+              logError('Error in giveaway modal handler (isolated):', giveawayError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your giveaway submission. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling modal submission:', error);
         
@@ -656,6 +697,64 @@ function startBot() {
   // Ping/pong monitoring
   client.ws.on('ping', () => {
     log(`WebSocket ping: ${client.ws.ping}ms`);
+  });
+  
+  // Handle message reaction add events (for giveaways)
+  client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    try {
+      // When a reaction is received, check if the message is partially cached
+      if (reaction.partial) {
+        // If the message this reaction belongs to was removed, the fetching might result in an error
+        try {
+          await reaction.fetch();
+        } catch (error) {
+          logError('Error fetching reaction:', error);
+          return;
+        }
+      }
+      
+      // Handle giveaway reactions if the service is available
+      if (giveawayService && giveawayService.handleReactionAdd) {
+        try {
+          await giveawayService.handleReactionAdd(reaction, user);
+        } catch (error) {
+          logError('Error handling giveaway reaction add (isolated):', error);
+          // Silently continue to prevent affecting core functionality
+        }
+      }
+    } catch (error) {
+      // Safely catch any errors to prevent disruption to the bot
+      logError('Error in reaction add handler:', error);
+    }
+  });
+  
+  // Handle message reaction remove events (for giveaways)
+  client.on(Events.MessageReactionRemove, async (reaction, user) => {
+    try {
+      // When a reaction is removed, check if the message is partially cached
+      if (reaction.partial) {
+        // If the message this reaction belongs to was removed, the fetching might result in an error
+        try {
+          await reaction.fetch();
+        } catch (error) {
+          logError('Error fetching reaction:', error);
+          return;
+        }
+      }
+      
+      // Handle giveaway reactions if the service is available
+      if (giveawayService && giveawayService.handleReactionRemove) {
+        try {
+          await giveawayService.handleReactionRemove(reaction, user);
+        } catch (error) {
+          logError('Error handling giveaway reaction remove (isolated):', error);
+          // Silently continue to prevent affecting core functionality
+        }
+      }
+    } catch (error) {
+      // Safely catch any errors to prevent disruption to the bot
+      logError('Error in reaction remove handler:', error);
+    }
   });
 
   // Login to Discord

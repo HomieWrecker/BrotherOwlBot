@@ -6,7 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand, giveawayCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -98,6 +98,14 @@ try {
   logError('Error loading target finder command:', error);
 }
 
+try {
+  giveawayCommand = require('./giveaway');
+  log('Loaded giveaway command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading giveaway command:', error);
+}
+
 // Collection of commands to register
 const commands = [
   statusCommand,
@@ -119,6 +127,7 @@ if (warstrategyCommand) commands.push(warstrategyCommand);
 if (botpermissionsCommand) commands.push(botpermissionsCommand);
 if (spyCommand) commands.push(spyCommand);
 if (targetfinderCommand) commands.push(targetfinderCommand);
+if (giveawayCommand) commands.push(giveawayCommand);
 
 /**
  * Registers all slash commands with Discord API
