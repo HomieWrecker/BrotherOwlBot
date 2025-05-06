@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-18"]
 
 [nix]
 channel = "stable-24_05"
@@ -19,6 +19,10 @@ args = "discord_bot_review"
 task = "workflow.run"
 args = "BrotherOwl Bot"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BrotherOwl Bot 24/7"
+
 [[workflows.workflow]]
 name = "discord_bot_review"
 author = "agent"
@@ -35,5 +39,21 @@ author = "agent"
 task = "shell.exec"
 args = "npm install discord.js ws && node index.js"
 
+[[workflows.workflow]]
+name = "BrotherOwl Bot 24/7"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node index.js"
+
 [deployment]
 run = ["sh", "-c", "npm install discord.js ws && node index.js"]
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
