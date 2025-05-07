@@ -22,7 +22,7 @@ let fallbackTimer = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY = 5000; // 5 seconds
-const FALLBACK_INTERVAL = 15000; // 15 seconds - faster for reliability
+const FALLBACK_INTERVAL = 30000; // 30 seconds
 let lastApiKey = null;
 
 /**
@@ -56,50 +56,104 @@ function startTornWS(callback) {
 
   lastApiKey = process.env.TORN_API_KEY;
   
-  // Let's start with the fallback mechanism first for immediate data
+  // Connect WebSocket
+  connectWebSocket(callback);
+  
+  // Start fallback timer for reliability
   fetchChainDataFallback(callback);
   
-  // Try WebSocket after a small delay
-  setTimeout(() => {
-    connectWebSocket(callback);
-  }, 1000);
-  
-  return { status: 'connecting' };
+  return { ws, status: 'connecting' };
 }
 
 /**
- * Connect to Torn API WebSocket (Note: Currently Torn API does not support WebSocket connections)
- * This function will try to connect but will seamlessly fall back to HTTP
+ * Connect to Torn API WebSocket
  * @param {Function} callback - Function to call when data is received
  */
 function connectWebSocket(callback) {
-  // Given persistent issues with the WebSocket endpoint, log but don't attempt to connect
-  log('WebSocket connection to Torn API is currently not supported. Using HTTP polling...');
+  log('Connecting to Torn API WebSocket...');
   
-  // Instead of attempting and failing, we just rely on the HTTP fallback
-  // Still keeping the function for future compatibility if Torn enables WebSocket support
+  try {
+    // Try a with some options and headers
+    ws = new WebSocket('wss://api.torn.com/wss/?v=5', {
+      headers: {
+        'User-Agent': 'BrotherOwlManager Discord Bot',
+        'Origin': 'https://www.torn.com'
+      },
+      handshakeTimeout: 15000
+    });
     
-  // Let's track a failed attempt to ensure we don't retry too often
-  reconnectAttempts++;
-  
-  // After MAX_RECONNECT_ATTEMPTS, we'll wait longer before trying WebSocket again
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    logWarning(`Maximum WebSocket reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Relying on HTTP polling.`);
-    
-    // Try again after a long delay in case WebSocket support is added
-    reconnectTimer = setTimeout(() => {
-      // Reset attempts and try again later
+    // Connection opened
+    ws.on('open', () => {
+      log('Connected to Torn WebSocket API');
       reconnectAttempts = 0;
       
-      // Don't even try to connect - simply log and rely on HTTP
-      log('Periodic check for WebSocket support (unlikely to succeed)');
-    }, 900000); // 15 minutes
-  } else {
-    // Schedule another attempt after a delay
-    reconnectTimer = setTimeout(() => {
-      // Don't even try to connect - simply log and rely on HTTP
-      log(`WebSocket attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} (unlikely to succeed)`);
-    }, RECONNECT_DELAY * reconnectAttempts);
+      // Send authentication message
+      const authMessage = {
+        key: lastApiKey || process.env.TORN_API_KEY,
+        channel: 'Faction:Chain'
+      };
+      ws.send(JSON.stringify(authMessage));
+    });
+    
+    // Listen for messages
+    ws.on('message', (data) => {
+      try {
+        const parsedData = JSON.parse(data);
+        
+        // Add timestamp for when data was last received
+        parsedData.lastUpdate = Date.now();
+        parsedData.source = 'websocket';
+        
+        // Process with callback (for main bot functionality)
+        callback(parsedData);
+        
+        // Also process chain data with the chain monitor if available
+        if (chainMonitor && chainMonitor.processChainData) {
+          try {
+            // Pass through the client for Discord access
+            const client = global.discordClient;
+            if (client) {
+              chainMonitor.processChainData(client, parsedData);
+            }
+          } catch (error) {
+            // Silently continue if chain monitoring fails
+            // This ensures the main bot functionality isn't affected
+          }
+        }
+      } catch (error) {
+        logError('Error parsing WebSocket message:', error);
+      }
+    });
+    
+    // Handle errors
+    ws.on('error', (error) => {
+      logError('Torn WebSocket error:', error);
+    });
+    
+    // Connection closed, attempt to reconnect
+    ws.on('close', (code, reason) => {
+      log(`Torn WebSocket connection closed. Code: ${code}, Reason: ${reason || ''}`);
+      
+      // Connection closed, start reconnect process
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = RECONNECT_DELAY * reconnectAttempts;
+        log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay / 1000} seconds...`);
+        
+        reconnectTimer = setTimeout(() => {
+          connectWebSocket(callback);
+        }, delay);
+      } else {
+        logWarning(`Maximum reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Falling back to HTTP polling.`);
+        fetchChainDataFallback(callback);
+      }
+    });
+  } catch (error) {
+    logError('Error creating WebSocket connection:', error);
+    
+    // If we can't create a WebSocket, fall back to HTTP
+    logWarning('Falling back to HTTP polling due to WebSocket creation error.');
+    fetchChainDataFallback(callback);
   }
 }
 
@@ -121,11 +175,7 @@ function fetchChainDataFallback(callback) {
     const options = {
       hostname: 'api.torn.com',
       path: `/faction/?selections=chain&key=${lastApiKey || process.env.TORN_API_KEY}`,
-      method: 'GET',
-      timeout: 10000, // 10-second timeout
-      headers: {
-        'User-Agent': 'BrotherOwlManager Discord Bot'
-      }
+      method: 'GET'
     };
     
     const req = https.request(options, res => {
@@ -166,7 +216,8 @@ function fetchChainDataFallback(callback) {
                 chainMonitor.processChainData(client, formattedData);
               }
             } catch (error) {
-              logError('Error in chain monitor during fallback update:', error);
+              // Silently continue if chain monitoring fails
+              // This ensures the main bot functionality isn't affected
             }
           }
           
@@ -178,22 +229,6 @@ function fetchChainDataFallback(callback) {
           fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
         }
       });
-      
-      // Handle response timeout
-      res.on('timeout', () => {
-        logError('REST API response timeout');
-        req.abort();
-        // Schedule retry
-        fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
-      });
-    });
-    
-    // Set request timeout
-    req.setTimeout(10000, () => {
-      logError('REST API request timeout');
-      req.abort();
-      // Schedule retry
-      fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
     });
     
     req.on('error', error => {
@@ -219,63 +254,40 @@ function fetchChainDataFallback(callback) {
  */
 function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_KEY) {
   return new Promise((resolve, reject) => {
-    try {
-      const options = {
-        hostname: 'api.torn.com',
-        path: `/${endpoint}/?selections=${selections}&key=${apiKey}`,
-        method: 'GET',
-        timeout: 10000, // 10-second timeout
-        headers: {
-          'User-Agent': 'BrotherOwlManager Discord Bot'
-        }
-      };
+    const options = {
+      hostname: 'api.torn.com',
+      path: `/${endpoint}/?selections=${selections}&key=${apiKey}`,
+      method: 'GET'
+    };
+    
+    const req = https.request(options, res => {
+      let data = '';
       
-      const req = https.request(options, res => {
-        let data = '';
-        
-        res.on('data', chunk => {
-          data += chunk;
-        });
-        
-        res.on('end', () => {
-          try {
-            if (!data || data.trim() === '') {
-              reject(new Error('Empty response from Torn API'));
-              return;
-            }
-            
-            const parsedData = JSON.parse(data);
-            
-            if (parsedData.error) {
-              reject(parsedData.error);
-              return;
-            }
-            
-            resolve(parsedData);
-          } catch (error) {
-            logError(`Error parsing API response from ${endpoint}:`, error);
-            reject(error);
+      res.on('data', chunk => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const parsedData = JSON.parse(data);
+          
+          if (parsedData.error) {
+            reject(parsedData.error);
+            return;
           }
-        });
+          
+          resolve(parsedData);
+        } catch (error) {
+          reject(error);
+        }
       });
-      
-      // Set request timeout
-      req.setTimeout(10000, () => {
-        logError(`API request timeout for ${endpoint}`);
-        req.abort();
-        reject(new Error('API request timeout'));
-      });
-      
-      req.on('error', error => {
-        logError(`API request error for ${endpoint}:`, error);
-        reject(error);
-      });
-      
-      req.end();
-    } catch (error) {
-      logError(`Critical error in API request for ${endpoint}:`, error);
+    });
+    
+    req.on('error', error => {
       reject(error);
-    }
+    });
+    
+    req.end();
   });
 }
 
@@ -284,7 +296,7 @@ function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_K
  * @param {Function} callback - Function to call when data is received
  */
 function reconnectTornWS(callback) {
-  log('Manually reconnecting to Torn API...');
+  log('Manually reconnecting to Torn API WebSocket...');
   
   // Clean up existing resources
   if (ws) {
@@ -309,13 +321,11 @@ function reconnectTornWS(callback) {
   // Reset reconnect attempts
   reconnectAttempts = 0;
   
-  // Start with the fallback for immediate data
-  fetchChainDataFallback(callback);
+  // Start fresh
+  connectWebSocket(callback);
   
-  // Try WebSocket after a small delay
-  setTimeout(() => {
-    connectWebSocket(callback);
-  }, 1000);
+  // Also start fallback timer for reliability
+  fetchChainDataFallback(callback);
 }
 
 /**
@@ -348,13 +358,11 @@ function resetAllConnections(callback) {
   // Reset reconnect attempts
   reconnectAttempts = 0;
   
-  // Start with the fallback for immediate data
-  fetchChainDataFallback(callback);
+  // Start fresh
+  connectWebSocket(callback);
   
-  // Try WebSocket after a small delay
-  setTimeout(() => {
-    connectWebSocket(callback);
-  }, 1000);
+  // Also start fallback timer for reliability
+  fetchChainDataFallback(callback);
 }
 
 module.exports = {
