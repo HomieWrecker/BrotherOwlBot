@@ -23,7 +23,7 @@ async function safeExecute(callback) {
   }
 }
 
-const warpayCommand = {
+module.exports = {
   data: new SlashCommandBuilder()
     .setName('warpay')
     .setDescription('Track and calculate war contributions and payment distribution')
@@ -631,5 +631,3 @@ function generatePaymentEmbeds(paymentData, trackingId) {
   
   return embeds;
 }
-
-module.exports = { warpayCommand };
