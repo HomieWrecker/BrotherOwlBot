@@ -6,15 +6,29 @@ import asyncio
 import os
 import json
 import sys
+import logging
 from utils.tornstats_adapter import TornStatsAdapter
+
+# Set up logging for debugging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("test_script")
 
 async def test_adapter(player_ids):
     """Test the adapter with multiple player IDs"""
     api_key = os.environ.get('TORNSTATS_API_KEY')
+    
+    print("🔹 DEBUG INFO 🔹")
+    print(f"API Key exists: {bool(api_key)}")
+    if api_key:
+        masked_key = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
+        print(f"API Key format: {masked_key}")
+    print(f"Python version: {sys.version}")
+    print("🔹 END DEBUG INFO 🔹")
+    
     adapter = TornStatsAdapter(api_key)
     
     try:
-        print("🔹 STARTING TORNSTATS ADAPTER TEST 🔹")
+        print("\n🔹 STARTING TORNSTATS ADAPTER TEST 🔹")
         
         results = {}
         for player_id in player_ids:
@@ -40,6 +54,59 @@ async def test_adapter(player_ids):
                 results[player_id] = data
             else:
                 print(f"❌ Failed to retrieve data for player {player_id}")
+                
+                # Try direct fetch for debugging
+                print("\n🔹 DEBUGGING DIRECT HTTP REQUESTS 🔹")
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        # Try first with direct /profiles/ path
+                        url = f"https://www.tornstats.com/profiles/{player_id}"
+                        print(f"Testing direct URL: {url}")
+                        async with session.get(url) as response:
+                            status = response.status
+                            print(f"  Status code: {status}")
+                            if status == 200:
+                                print("  Success! This URL works")
+                            else:
+                                print(f"  Failed with status {status}")
+                        
+                        # Try with API endpoint
+                        url = f"https://www.tornstats.com/api/v1/player/{player_id}"
+                        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+                        print(f"Testing API URL: {url}")
+                        print(f"  Headers: {headers}")
+                        async with session.get(url, headers=headers) as response:
+                            status = response.status
+                            print(f"  Status code: {status}")
+                            if status == 200:
+                                print("  Success! This API endpoint works")
+                                response_data = await response.text()
+                                try:
+                                    json_data = json.loads(response_data)
+                                    print(f"  Response data: {json.dumps(json_data, indent=2)}")
+                                except:
+                                    print(f"  Response text: {response_data[:200]}...")
+                            else:
+                                print(f"  Failed with status {status}")
+                                response_text = await response.text()
+                                print(f"  Response: {response_text[:200]}...")
+                        
+                        # Try another known endpoint
+                        url = f"https://www.tornstats.com"
+                        print(f"Testing base URL: {url}")
+                        async with session.get(url) as response:
+                            status = response.status
+                            print(f"  Status code: {status}")
+                            if status == 200:
+                                print("  Success! Base URL works")
+                                html = await response.text()
+                                print(f"  Title: {html.split('<title>')[1].split('</title>')[0] if '<title>' in html else 'No title found'}")
+                            else:
+                                print(f"  Failed with status {status}")
+                except Exception as e:
+                    print(f"  Error during direct testing: {str(e)}")
+                
                 results[player_id] = None
         
         print("\n🔹 TEST SUMMARY 🔹")
