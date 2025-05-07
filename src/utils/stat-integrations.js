@@ -170,6 +170,58 @@ async function fetchFromTornStats(playerId, apiKey) {
 }
 
 /**
+ * Fetch spy data from TornStats (direct method)
+ * @param {string} playerId - Player ID to spy on
+ * @param {string} apiKey - TornStats API key
+ * @returns {Promise<Object|null>} Spy data or null on error
+ */
+async function fetchSpyFromTornStats(playerId, apiKey) {
+  try {
+    if (!apiKey) {
+      return null;
+    }
+    
+    log(`Fetching spy data from TornStats for player ${playerId}`);
+    
+    // First check if we can use the direct spy endpoint
+    const spyOptions = {
+      hostname: 'www.tornstats.com',
+      path: `/api/v2/${apiKey}/spy/${playerId}`,
+      method: 'GET'
+    };
+    
+    const spyResponse = await makeRequest(spyOptions);
+    
+    if (spyResponse.statusCode === 200 && !spyResponse.error && 
+        spyResponse.data && spyResponse.data.status === 'success') {
+      log(`Successfully fetched spy data from TornStats for player ${playerId}`);
+      return spyResponse.data;
+    }
+    
+    // If direct spy fails, fall back to the stats endpoint
+    const statsOptions = {
+      hostname: 'www.tornstats.com',
+      path: `/api/v2/${apiKey}/stats/${playerId}`,
+      method: 'GET'
+    };
+    
+    const statsResponse = await makeRequest(statsOptions);
+    
+    if (statsResponse.statusCode === 200 && !statsResponse.error && 
+        statsResponse.data && statsResponse.data.status === 'success') {
+      log(`Successfully fetched stats data from TornStats for player ${playerId}`);
+      return statsResponse.data;
+    }
+    
+    logError(`Could not fetch spy or stats data from TornStats for player ${playerId}`);
+    return null;
+  } catch (error) {
+    logError(`Error in fetchSpyFromTornStats for player ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch player stats from TornTools
  * @param {string} playerId - Player ID
  * @param {string} apiKey - TornTools API key (optional)

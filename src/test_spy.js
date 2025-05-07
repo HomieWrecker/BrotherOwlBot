@@ -166,7 +166,11 @@ async function runTests() {
   log('Looking up valid player IDs...');
   for (const name of testPlayerNames) {
     const lookupResult = await testPlayerLookupByName(name);
-    if (lookupResult && lookupResult.user && lookupResult.user.length > 0) {
+    // Let's log the full lookupResult structure to see what we're working with
+    log('Full lookup result:');
+    console.log(JSON.stringify(lookupResult, null, 2));
+    
+    if (lookupResult && lookupResult.user && Array.isArray(lookupResult.user) && lookupResult.user.length > 0) {
       const playerId = lookupResult.user[0].player_id.toString();
       log(`Found ID for ${name}: ${playerId}`);
       testPlayerIds.push(playerId);

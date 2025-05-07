@@ -318,7 +318,23 @@ async function testFactionTargets(userId) {
 async function runTests() {
   log('🔹 STARTING TARGETFINDER COMMAND FUNCTIONALITY TESTS 🔹');
   
-  // Use first test ID as our user
+  // First, get valid player IDs by looking up names
+  log('Looking up valid player IDs...');
+  for (const name of testPlayerNames) {
+    const playerId = await lookupPlayerByName(name);
+    if (playerId) {
+      testPlayerIds.push(playerId);
+    }
+  }
+  
+  if (testPlayerIds.length === 0) {
+    logError('Could not find any valid player IDs. Tests cannot continue.');
+    return;
+  }
+  
+  log(`Using player IDs for tests: ${testPlayerIds.join(', ')}`);
+  
+  // Use first valid ID as our test user
   const testUserId = testPlayerIds[0];
   
   // Test target finder with user's own data
