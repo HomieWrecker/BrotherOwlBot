@@ -309,18 +309,18 @@ async function handlePlayerSpy(interaction, client, apiKey) {
     // Check if input is numeric (ID) or text (name)
     const isPlayerId = /^\d+$/.test(playerInput.trim());
     let playerId = isPlayerId ? playerInput.trim() : null;
-    let playerName = isPlayerId ? null : playerInput.trim();
+    let nameInput = isPlayerId ? null : playerInput.trim();
     
     // If input is a name, convert to ID using the lookup API
     if (!isPlayerId) {
       await interaction.followUp({
-        content: `🔍 Looking up player named "${playerName}"...`,
+        content: `🔍 Looking up player named "${nameInput}"...`,
         ephemeral: true
       });
       
       // Search for player by name using Torn's lookup API
       try {
-        const searchResponse = await fetch(`https://api.torn.com/user/${apiKey}?selections=lookup&q=${encodeURIComponent(playerName)}`);
+        const searchResponse = await fetch(`https://api.torn.com/user/${apiKey}?selections=lookup&q=${encodeURIComponent(nameInput)}`);
         const searchData = await searchResponse.json();
         
         // Handle API errors
@@ -342,7 +342,7 @@ async function handlePlayerSpy(interaction, client, apiKey) {
         // Check if we got any results
         if (!searchData.users || searchData.users.length === 0) {
           return interaction.followUp({
-            content: `❌ No players found matching "${playerName}". Try using their exact Torn name or player ID instead.`,
+            content: `❌ No players found matching "${nameInput}". Try using their exact Torn name or player ID instead.`,
             ephemeral: true
           });
         }
@@ -350,7 +350,7 @@ async function handlePlayerSpy(interaction, client, apiKey) {
         // If we have multiple matches, show a list of the first few
         if (searchData.users.length > 1) {
           const matchCount = Math.min(searchData.users.length, 5); // Show up to 5 matches
-          let matchMessage = `📋 Found ${searchData.users.length} players matching "${playerName}". Using the first match.\n\nMatches:`;
+          let matchMessage = `📋 Found ${searchData.users.length} players matching "${nameInput}". Using the first match.\n\nMatches:`;
           
           for (let i = 0; i < matchCount; i++) {
             const user = searchData.users[i];
@@ -369,47 +369,77 @@ async function handlePlayerSpy(interaction, client, apiKey) {
         
         // Use the first match
         playerId = searchData.users[0].user_id;
-        playerName = searchData.users[0].name;
       } catch (searchError) {
         logError('Error searching for player by name:', searchError);
         return interaction.followUp({
-          content: `❌ Failed to find player named "${playerName}". The service might be unavailable or rate limited.`,
+          content: `❌ Failed to find player named "${nameInput}". The service might be unavailable or rate limited.`,
           ephemeral: true
         });
       }
     }
     
+    // Let's get the foundName from the search results
+    let foundName = null;
+    if (!isPlayerId && searchData && searchData.users && searchData.users.length > 0) {
+      foundName = searchData.users[0].name;
+    }
+
     // Start gathering intelligence
     await interaction.followUp({
-      content: playerName 
-        ? `🕵️ Gathering intelligence on ${playerName} [${playerId}]...`
+      content: foundName 
+        ? `🕵️ Gathering intelligence on ${foundName} [${playerId}]...`
         : `🕵️ Gathering intelligence on player ID ${playerId}...`,
       ephemeral: true
     });
     
-    // Get player battle stats and information
-    const playerStats = await getPlayerBattleStats(playerId, apiKey);
+    // Try to get battle stats from our enhanced tracker if available
+    let enhancedStats = null;
+    let useEnhancedStats = false;
     
-    if (!playerStats) {
-      // Handle different error cases
-      return interaction.followUp({
-        content: `❌ Error fetching player data: Player ID ${playerId} not found or doesn't exist. Please check the ID and try again.`,
-        ephemeral: true
-      });
+    if (battleStatsTracker) {
+      try {
+        // Use the battle stats tracker to get more comprehensive stats
+        enhancedStats = await battleStatsTracker.getPlayerStats(playerId, apiKey);
+        useEnhancedStats = (enhancedStats && enhancedStats.battleStats && enhancedStats.battleStats.total > 0);
+        
+        if (useEnhancedStats) {
+          log(`Using enhanced battle stats for player ${playerId} from ${enhancedStats.sources.join(', ')}`);
+        } else {
+          log(`Enhanced stats not available for player ${playerId}, falling back to basic stats`);
+        }
+      } catch (statsError) {
+        logError(`Error getting enhanced stats for player ${playerId}:`, statsError);
+        // Continue with the basic stats approach
+      }
     }
     
-    if (playerStats.error) {
-      let errorMessage = playerStats.error.error || 'Unknown error';
+    // If enhanced stats are not available, fall back to basic stats
+    let playerStats = null;
+    if (!useEnhancedStats) {
+      // Get player battle stats and information using the original method
+      playerStats = await getPlayerBattleStats(playerId, apiKey);
       
-      // Special handling for common errors
-      if (playerStats.error.code === 7) {
-        errorMessage = `Player ID ${playerId} doesn't exist or has been deleted.`;
+      if (!playerStats) {
+        // Handle different error cases
+        return interaction.followUp({
+          content: `❌ Error fetching player data: Player ID ${playerId} not found or doesn't exist. Please check the ID and try again.`,
+          ephemeral: true
+        });
       }
       
-      return interaction.followUp({
-        content: `❌ Error fetching player data: ${errorMessage}`,
-        ephemeral: true
-      });
+      if (playerStats.error) {
+        let errorMessage = playerStats.error.error || 'Unknown error';
+        
+        // Special handling for common errors
+        if (playerStats.error.code === 7) {
+          errorMessage = `Player ID ${playerId} doesn't exist or has been deleted.`;
+        }
+        
+        return interaction.followUp({
+          content: `❌ Error fetching player data: ${errorMessage}`,
+          ephemeral: true
+        });
+      }
     }
     
     // Get additional data from any additional API keys the user has
@@ -437,72 +467,167 @@ async function handlePlayerSpy(interaction, client, apiKey) {
       }
     }
     
-    // Create the player intelligence embed
+    // Create the player intelligence embed - use player name from either source
+    let playerName = "Unknown";
+    if (useEnhancedStats && enhancedStats.playerProfile) {
+      playerName = enhancedStats.playerProfile.name || `Player ${playerId}`;
+    } else if (playerStats && playerStats.name) {
+      playerName = playerStats.name;
+    }
+    
     const playerEmbed = new EmbedBuilder()
-      .setTitle(`🕵️ Intelligence Report: ${playerStats.name} [${playerId}]`)
+      .setTitle(`🕵️ Intelligence Report: ${playerName} [${playerId}]`)
       .setColor(Colors.DarkRed)
       .setDescription(`Battle intelligence gathered on this player:`)
       .setFooter({ text: `${BOT_CONFIG.name} | Data may not be 100% accurate` })
       .setTimestamp();
     
-    // Add player general information
+    // Add player general information - combine data from both sources when possible
+    let level = 'Unknown';
+    let faction = 'None';
+    
+    if (useEnhancedStats) {
+      if (enhancedStats.playerProfile) {
+        level = enhancedStats.playerProfile.level || 'Unknown';
+      }
+    } else if (playerStats) {
+      level = playerStats.level || 'Unknown';
+      faction = playerStats.faction?.faction_name ? 
+        `${playerStats.faction.faction_name} [${playerStats.faction.faction_id}]` : 'None';
+    }
+    
     playerEmbed.addFields(
-      { name: 'Name', value: `${playerStats.name} [${playerId}]`, inline: true },
-      { name: 'Level', value: `${playerStats.level || 'Unknown'}`, inline: true },
-      { name: 'Faction', value: playerStats.faction?.faction_name ? `${playerStats.faction.faction_name} [${playerStats.faction.faction_id}]` : 'None', inline: true }
+      { name: 'Name', value: `${playerName} [${playerId}]`, inline: true },
+      { name: 'Level', value: `${level}`, inline: true },
+      { name: 'Faction', value: faction, inline: true }
     );
     
-    // Handle battle stats from different possible API structures
-    const battleStats = playerStats.battlestats || playerStats;
-    const strength = battleStats.strength;
-    const defense = battleStats.defense;
-    const speed = battleStats.speed;
-    const dexterity = battleStats.dexterity;
-    
-    // Check if we have any stats available
-    if (strength || defense || speed || dexterity) {
-      const totalStats = (strength || 0) + (defense || 0) + (speed || 0) + (dexterity || 0);
-      
+    // Add data sources if using enhanced stats
+    if (useEnhancedStats && enhancedStats.sources && enhancedStats.sources.length > 0) {
       playerEmbed.addFields(
-        { name: 'Battle Stats', value: 
-          `💪 Strength: ${strength ? strength.toLocaleString() : 'Unknown'}\n` +
-          `🛡️ Defense: ${defense ? defense.toLocaleString() : 'Unknown'}\n` +
-          `🏃‍♂️ Speed: ${speed ? speed.toLocaleString() : 'Unknown'}\n` +
-          `🎯 Dexterity: ${dexterity ? dexterity.toLocaleString() : 'Unknown'}\n` +
-          `🔥 Total: ${totalStats ? totalStats.toLocaleString() : 'Unknown'}`
-        }
-      );
-    } else if (playerStats.calculatedStats && playerStats.calculatedStats.totalBattleStats) {
-      // If we have the calculated total but not individual stats
-      playerEmbed.addFields(
-        { name: 'Battle Stats', value: 
-          `Total Battle Stats: ${playerStats.calculatedStats.totalBattleStats.toLocaleString()}\n` +
-          `(Individual stats not visible with current API key permissions)`
-        }
-      );
-    } else {
-      playerEmbed.addFields(
-        { name: 'Battle Stats', value: 'Unable to view battle stats with current API key permissions.' }
+        { name: 'Intelligence Sources', value: enhancedStats.sources.join(', '), inline: false }
       );
     }
     
-    // Add activity information
-    // Handle different API response structures for last_action
+    // Battle stats section
+    if (useEnhancedStats && enhancedStats.battleStats) {
+      // Use enhanced stats from our tracker
+      const bs = enhancedStats.battleStats;
+      const fairFight = enhancedStats.fairFight?.multiplier || 1.0;
+      
+      playerEmbed.addFields(
+        { name: 'Battle Stats (Comprehensive Analysis)', value: 
+          `💪 Strength: ${bs.strength.toLocaleString()}\n` +
+          `🛡️ Defense: ${bs.defense.toLocaleString()}\n` +
+          `🏃‍♂️ Speed: ${bs.speed.toLocaleString()}\n` +
+          `🎯 Dexterity: ${bs.dexterity.toLocaleString()}\n` +
+          `🔥 Total: ${bs.total.toLocaleString()}\n` +
+          `⚖️ Fair Fight Multiplier: ${fairFight.toFixed(2)}`
+        }
+      );
+      
+      // Add confidence level if available
+      if (battleStatsTracker.calculateConfidenceLevel) {
+        try {
+          const confidence = battleStatsTracker.calculateConfidenceLevel(enhancedStats);
+          playerEmbed.addFields(
+            { name: 'Stats Confidence', value: confidence, inline: true }
+          );
+        } catch (error) {
+          // Silently ignore if function doesn't exist or fails
+        }
+      }
+      
+    } else if (playerStats) {
+      // Fall back to original stat display logic
+      const battleStats = playerStats.battlestats || playerStats;
+      const strength = battleStats.strength;
+      const defense = battleStats.defense;
+      const speed = battleStats.speed;
+      const dexterity = battleStats.dexterity;
+      
+      // Check if we have any stats available
+      if (strength || defense || speed || dexterity) {
+        const totalStats = (strength || 0) + (defense || 0) + (speed || 0) + (dexterity || 0);
+        
+        playerEmbed.addFields(
+          { name: 'Battle Stats', value: 
+            `💪 Strength: ${strength ? strength.toLocaleString() : 'Unknown'}\n` +
+            `🛡️ Defense: ${defense ? defense.toLocaleString() : 'Unknown'}\n` +
+            `🏃‍♂️ Speed: ${speed ? speed.toLocaleString() : 'Unknown'}\n` +
+            `🎯 Dexterity: ${dexterity ? dexterity.toLocaleString() : 'Unknown'}\n` +
+            `🔥 Total: ${totalStats ? totalStats.toLocaleString() : 'Unknown'}`
+          }
+        );
+      } else if (playerStats.calculatedStats && playerStats.calculatedStats.totalBattleStats) {
+        // If we have the calculated total but not individual stats
+        playerEmbed.addFields(
+          { name: 'Battle Stats', value: 
+            `Total Battle Stats: ${playerStats.calculatedStats.totalBattleStats.toLocaleString()}\n` +
+            `(Individual stats not visible with current API key permissions)`
+          }
+        );
+      } else {
+        playerEmbed.addFields(
+          { name: 'Battle Stats', value: 'Unable to view battle stats with current API key permissions.' }
+        );
+      }
+    } else {
+      playerEmbed.addFields(
+        { name: 'Battle Stats', value: 'No battle stats data available.' }
+      );
+    }
+    
+    // Add activity information from enhanced stats if available, otherwise fallback
     let lastAction = 'Unknown';
-    if (playerStats.last_action && playerStats.last_action.status) {
-      lastAction = playerStats.last_action.status;
-    } else if (playerStats.last_action && typeof playerStats.last_action === 'string') {
-      lastAction = playerStats.last_action;
-    } else if (playerStats.profile && playerStats.profile.last_action) {
-      lastAction = typeof playerStats.profile.last_action === 'string' ? 
-                  playerStats.profile.last_action : 
-                  playerStats.profile.last_action.status || 'Unknown';
+    let activityLevel = 'Unknown';
+    
+    if (useEnhancedStats && enhancedStats.playerProfile) {
+      // Try to get activity data from enhanced stats
+      if (enhancedStats.playerProfile.last_action) {
+        // Format can vary but we'll handle it
+        if (typeof enhancedStats.playerProfile.last_action === 'string') {
+          lastAction = enhancedStats.playerProfile.last_action;
+        } else if (enhancedStats.playerProfile.last_action.status) {
+          lastAction = enhancedStats.playerProfile.last_action.status;
+        }
+      }
+      
+      // Get activity level from enhanced stats if available
+      if (enhancedStats.activity && enhancedStats.activity.level) {
+        activityLevel = enhancedStats.activity.level;
+      }
+    } else if (playerStats) {
+      // Fall back to regular stat format
+      if (playerStats.last_action && playerStats.last_action.status) {
+        lastAction = playerStats.last_action.status;
+      } else if (playerStats.last_action && typeof playerStats.last_action === 'string') {
+        lastAction = playerStats.last_action;
+      } else if (playerStats.profile && playerStats.profile.last_action) {
+        lastAction = typeof playerStats.profile.last_action === 'string' ? 
+                    playerStats.profile.last_action : 
+                    playerStats.profile.last_action.status || 'Unknown';
+      }
+      
+      activityLevel = playerStats.calculatedStats?.estimatedActivity || 'Unknown';
+    }
+    
+    // Add last online time if available from enhanced stats
+    let lastOnline = '';
+    if (useEnhancedStats && enhancedStats.activity && enhancedStats.activity.lastOnline) {
+      try {
+        // Format timestamp if available
+        const lastOnlineTime = new Date(enhancedStats.activity.lastOnline);
+        lastOnline = `\nLast Online: ${lastOnlineTime.toLocaleString()}`;
+      } catch (e) {
+        // Silently fail if date formatting fails
+      }
     }
     
     playerEmbed.addFields(
       { name: 'Activity', value: 
         `Last Action: ${lastAction}\n` +
-        `Activity Level: ${playerStats.calculatedStats?.estimatedActivity || 'Unknown'}`
+        `Activity Level: ${activityLevel}${lastOnline}`
       }
     );
     
