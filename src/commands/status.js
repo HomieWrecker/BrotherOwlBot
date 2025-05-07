@@ -5,9 +5,10 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { log } = require('../utils/logger');
 const os = require('os');
-const { version } = require('../../package.json');
+const versionInfo = require('../config/version');
 
-module.exports = {
+// Command definition
+const statusCommand = {
   data: new SlashCommandBuilder()
     .setName('status')
     .setDescription('Shows the current status of the bot and its services'),
@@ -41,7 +42,7 @@ module.exports = {
         .setColor(0x0099FF)
         .setDescription('Current status of bot services and connections')
         .addFields(
-          { name: 'Bot Version', value: version || 'Unknown', inline: true },
+          { name: 'Bot Version', value: versionInfo.version || 'Unknown', inline: true },
           { name: 'Uptime', value: uptimeFormatted, inline: true },
           { name: 'Memory Usage', value: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`, inline: true },
           { name: 'Torn API Status', value: tornAPIStatus, inline: true },
@@ -87,3 +88,7 @@ function formatUptime(seconds) {
   
   return result;
 }
+
+module.exports = {
+  statusCommand
+};
