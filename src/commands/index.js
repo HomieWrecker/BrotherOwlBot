@@ -103,7 +103,7 @@ try {
 }
 
 try {
-  warpayCommand = require('./warpay');
+  warpayCommand = require('./warpay').warpayCommand;
   log('Loaded war pay command');
 } catch (error) {
   // Silently continue if module doesn't exist

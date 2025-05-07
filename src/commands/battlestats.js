@@ -26,7 +26,7 @@ async function safeExecute(callback) {
   }
 }
 
-module.exports = {
+const battlestatsCommand = {
   data: new SlashCommandBuilder()
     .setName('battlestats')
     .setDescription('Get detailed battle stat information about players')
