@@ -49,8 +49,7 @@ const statusCommand = {
           { name: 'Data Source', value: dataSource, inline: true },
           { name: 'Last Update', value: lastUpdateTime ? `${dataAge}s ago` : 'Never', inline: true },
           { name: 'Discord Gateway', value: '🟢 Connected', inline: true },
-          { name: 'Registered Commands', value: `${client.commands.size}`, inline: true },
-          { name: 'Host', value: `Replit`, inline: true }
+          { name: 'Registered Commands', value: `${client.commands.size}`, inline: true }
         )
         .setFooter({ 
           text: `Discord API Latency: ${client.ws.ping}ms • Server Time: ${new Date().toLocaleString()}` 
