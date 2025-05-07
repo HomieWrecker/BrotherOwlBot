@@ -83,7 +83,7 @@ try {
 }
 
 try {
-  spyCommand = require('./spy');
+  spyCommand = require('./spy').spyCommand;
   log('Loaded spy command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -91,7 +91,7 @@ try {
 }
 
 try {
-  targetfinderCommand = require('./targetfinder');
+  targetfinderCommand = require('./targetfinder').targetfinderCommand;
   log('Loaded target finder command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -99,7 +99,7 @@ try {
 }
 
 try {
-  giveawayCommand = require('./giveaway');
+  giveawayCommand = require('./giveaway').giveawayCommand;
   log('Loaded giveaway command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -107,7 +107,7 @@ try {
 }
 
 try {
-  activitymapCommand = require('./activitymap');
+  activitymapCommand = require('./activitymap').activitymapCommand;
   log('Loaded activity heat map command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -115,7 +115,7 @@ try {
 }
 
 try {
-  warpayCommand = require('./warpay');
+  warpayCommand = require('./warpay').warpayCommand;
   log('Loaded war pay command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -123,7 +123,7 @@ try {
 }
 
 try {
-  battlestatsCommand = require('./battlestats');
+  battlestatsCommand = require('./battlestats').battlestatsCommand;
   log('Loaded battle stats command');
 } catch (error) {
   // Silently continue if module doesn't exist
