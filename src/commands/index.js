@@ -6,8 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-// Spy and targetfinder commands have been removed from this list
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, giveawayCommand, activitymapCommand, warpayCommand, battlestatsCommand, apiconnectionCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand, giveawayCommand, activitymapCommand, warpayCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -83,11 +82,24 @@ try {
   logError('Error loading bot permissions command:', error);
 }
 
-// Spy and targetfinder commands have been removed
-// They were causing stability issues
+try {
+  spyCommand = require('./spy');
+  log('Loaded spy command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading spy command:', error);
+}
 
 try {
-  giveawayCommand = require('./giveaway').giveawayCommand;
+  targetfinderCommand = require('./targetfinder');
+  log('Loaded target finder command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading target finder command:', error);
+}
+
+try {
+  giveawayCommand = require('./giveaway');
   log('Loaded giveaway command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -95,7 +107,7 @@ try {
 }
 
 try {
-  activitymapCommand = require('./activitymap').activitymapCommand;
+  activitymapCommand = require('./activitymap');
   log('Loaded activity heat map command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -108,22 +120,6 @@ try {
 } catch (error) {
   // Silently continue if module doesn't exist
   logError('Error loading war pay command:', error);
-}
-
-try {
-  battlestatsCommand = require('./battlestats');
-  log('Loaded battle stats command');
-} catch (error) {
-  // Silently continue if module doesn't exist
-  logError('Error loading battle stats command:', error);
-}
-
-try {
-  apiconnectionCommand = require('./apiconnection');
-  log('Loaded API connection command');
-} catch (error) {
-  // Silently continue if module doesn't exist
-  logError('Error loading API connection command:', error);
 }
 
 // Collection of commands to register
@@ -145,12 +141,11 @@ if (factionstatsCommand) commands.push(factionstatsCommand);
 if (warcountdownCommand) commands.push(warcountdownCommand);
 if (warstrategyCommand) commands.push(warstrategyCommand);
 if (botpermissionsCommand) commands.push(botpermissionsCommand);
-// Spy and targetfinder commands have been removed
+if (spyCommand) commands.push(spyCommand);
+if (targetfinderCommand) commands.push(targetfinderCommand);
 if (giveawayCommand) commands.push(giveawayCommand);
 if (activitymapCommand) commands.push(activitymapCommand);
 if (warpayCommand) commands.push(warpayCommand);
-if (battlestatsCommand) commands.push(battlestatsCommand);
-if (apiconnectionCommand) commands.push(apiconnectionCommand);
 
 /**
  * Registers all slash commands with Discord API
