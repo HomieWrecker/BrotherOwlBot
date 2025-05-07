@@ -6,7 +6,8 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand, giveawayCommand, activitymapCommand, warpayCommand, battlestatsCommand, apiconnectionCommand;
+// Spy and targetfinder commands have been removed from this list
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, giveawayCommand, activitymapCommand, warpayCommand, battlestatsCommand, apiconnectionCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
@@ -82,21 +83,8 @@ try {
   logError('Error loading bot permissions command:', error);
 }
 
-try {
-  spyCommand = require('./spy');
-  log('Loaded spy command');
-} catch (error) {
-  // Silently continue if module doesn't exist
-  logError('Error loading spy command:', error);
-}
-
-try {
-  targetfinderCommand = require('./targetfinder');
-  log('Loaded target finder command');
-} catch (error) {
-  // Silently continue if module doesn't exist
-  logError('Error loading target finder command:', error);
-}
+// Spy and targetfinder commands have been removed
+// They were causing stability issues
 
 try {
   giveawayCommand = require('./giveaway');
@@ -157,8 +145,7 @@ if (factionstatsCommand) commands.push(factionstatsCommand);
 if (warcountdownCommand) commands.push(warcountdownCommand);
 if (warstrategyCommand) commands.push(warstrategyCommand);
 if (botpermissionsCommand) commands.push(botpermissionsCommand);
-if (spyCommand) commands.push(spyCommand);
-if (targetfinderCommand) commands.push(targetfinderCommand);
+// Spy and targetfinder commands have been removed
 if (giveawayCommand) commands.push(giveawayCommand);
 if (activitymapCommand) commands.push(activitymapCommand);
 if (warpayCommand) commands.push(warpayCommand);
