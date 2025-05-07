@@ -444,30 +444,129 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       log(`Error in authentication flow: ${error.message}`);
     }
     
-    // Final fallback - use public source estimation
-    log(`All TornStats methods failed, falling back to public source estimation`);
+    // Final fallback - use enhanced multi-layer fallback system
+    log(`All TornStats API methods failed, using enhanced fallback system`);
     
-    // Use the estimator as a fallback
-    const statEstimator = require('./stat-estimator');
-    const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
-    
-    if (estimatedStats && estimatedStats.battleStats) {
-      return {
-        spy: {
-          name: estimatedStats.playerName || `Player ${playerId}`,
-          level: estimatedStats.level || 1,
-          strength: estimatedStats.battleStats.strength || 0,
-          defense: estimatedStats.battleStats.defense || 0,
-          speed: estimatedStats.battleStats.speed || 0,
-          dexterity: estimatedStats.battleStats.dexterity || 0,
-          update_time: new Date().toISOString(),
-          source: 'Public Source Estimation (TornStats unavailable)'
-        }
-      };
+    // LAYER 1: Try direct scraping from Torn
+    log(`Fallback Layer 1: Direct HTML scraping from Torn`);
+    try {
+      const tornScraper = require('./torn-scraper');
+      const scrapedData = await tornScraper.scrapePlayerProfile(playerId);
+      
+      if (scrapedData && scrapedData.battleStats && 
+          (scrapedData.battleStats.strength > 0 || 
+           scrapedData.battleStats.speed > 0 || 
+           scrapedData.battleStats.dexterity > 0 || 
+           scrapedData.battleStats.defense > 0)) {
+        
+        log(`Successfully scraped battle stats directly from Torn for player ${playerId}`);
+        return {
+          spy: {
+            name: scrapedData.name || `Player ${playerId}`,
+            level: scrapedData.level || 1,
+            strength: scrapedData.battleStats.strength || 0,
+            defense: scrapedData.battleStats.defense || 0,
+            speed: scrapedData.battleStats.speed || 0,
+            dexterity: scrapedData.battleStats.dexterity || 0,
+            update_time: new Date().toISOString(),
+            source: 'Torn Profile Scraping'
+          }
+        };
+      }
+    } catch (scrapingError) {
+      logError(`Error in direct Torn scraping fallback: ${scrapingError.message}`);
+      // Continue to next fallback layer
     }
     
+    // LAYER 2: Try more sophisticated multi-source estimation
+    log(`Fallback Layer 2: Advanced public source estimation`);
+    try {
+      const statEstimator = require('./stat-estimator');
+      const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
+      
+      if (estimatedStats && estimatedStats.battleStats && 
+          (estimatedStats.battleStats.strength > 0 || 
+           estimatedStats.battleStats.speed > 0 || 
+           estimatedStats.battleStats.dexterity > 0 || 
+           estimatedStats.battleStats.defense > 0)) {
+        
+        log(`Successfully estimated battle stats from public sources for player ${playerId}`);
+        return {
+          spy: {
+            name: estimatedStats.playerName || `Player ${playerId}`,
+            level: estimatedStats.level || 1,
+            strength: estimatedStats.battleStats.strength || 0,
+            defense: estimatedStats.battleStats.defense || 0,
+            speed: estimatedStats.battleStats.speed || 0,
+            dexterity: estimatedStats.battleStats.dexterity || 0,
+            update_time: new Date().toISOString(),
+            source: 'Public Source Estimation (TornStats unavailable)'
+          }
+        };
+      }
+    } catch (estimationError) {
+      logError(`Error in public source estimation fallback: ${estimationError.message}`);
+      // Continue to next fallback layer
+    }
+    
+    // LAYER 3: Try looking up past battle data from local cache and history
+    log(`Fallback Layer 3: Historical battle data lookup`);
+    try {
+      // Check if we have cached battle data for this player
+      const fs = require('fs');
+      const path = require('path');
+      const dataPath = path.join(__dirname, '../../data/player_stats.json');
+      
+      if (fs.existsSync(dataPath)) {
+        const statsData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+        if (statsData[playerId]) {
+          const playerData = statsData[playerId];
+          
+          // Only use cached data if it exists and has some battle stats
+          if (playerData.battleStats && 
+              (playerData.battleStats.strength > 0 || 
+               playerData.battleStats.speed > 0 || 
+               playerData.battleStats.dexterity > 0 || 
+               playerData.battleStats.defense > 0)) {
+            
+            log(`Using cached battle stats for player ${playerId} from ${new Date(playerData.timestamp).toISOString()}`);
+            return {
+              spy: {
+                name: playerData.name || `Player ${playerId}`,
+                level: playerData.level || 1,
+                strength: playerData.battleStats.strength || 0,
+                defense: playerData.battleStats.defense || 0,
+                speed: playerData.battleStats.speed || 0,
+                dexterity: playerData.battleStats.dexterity || 0,
+                update_time: new Date(playerData.timestamp).toISOString(),
+                source: 'Historical Cache Data'
+              }
+            };
+          }
+        }
+      }
+    } catch (historyError) {
+      logError(`Error in historical data fallback: ${historyError.message}`);
+      // Continue to final fallback
+    }
+    
+    // Final fallback: Return basic placeholder (clearly marked as unavailable)
+    log(`All fallback methods failed, returning unavailable status for player ${playerId}`);
     logError(`Could not fetch spy or stats data from TornStats for player ${playerId}`);
-    return null;
+    return {
+      spy: {
+        name: `Player ${playerId}`,
+        level: 0,
+        strength: 0,
+        defense: 0, 
+        speed: 0,
+        dexterity: 0,
+        update_time: new Date().toISOString(),
+        source: 'Data Unavailable',
+        status: 'error',
+        message: 'Battle stats could not be retrieved. TornStats API unavailable and estimation failed.'
+      }
+    };
   } catch (error) {
     logError(`Error in fetchSpyFromTornStats for player ${playerId}:`, error);
     return null;

@@ -79,17 +79,58 @@ class TornStatsAdapter:
                 return auth_data
 
             logger.warning(f"Could not retrieve data for player {player_id}")
-            return None
+            # Return structured error data with clear message
+            return {
+                'spy': {
+                    'name': f"Player {player_id}",
+                    'level': 0,
+                    'strength': 0,
+                    'defense': 0,
+                    'speed': 0,
+                    'dexterity': 0,
+                    'update_time': 'Error',
+                    'source': 'Python Adapter',
+                    'status': 'error',
+                    'message': 'Could not retrieve player data from TornStats.'
+                }
+            }
 
         except Exception as e:
             logger.error(f"TornStats error for {player_id}: {str(e)}")
-            return None
+            # Return structured error data instead of None
+            return {
+                'spy': {
+                    'name': f"Player {player_id}",
+                    'level': 0,
+                    'strength': 0,
+                    'defense': 0,
+                    'speed': 0,
+                    'dexterity': 0,
+                    'update_time': 'Error',
+                    'source': 'Python Adapter',
+                    'status': 'error',
+                    'message': f'TornStats API error: {str(e)}'
+                }
+            }
 
     async def _fetch_json_api(self, player_id):
         """Attempt direct JSON API access with official endpoint formats"""
         if not self.api_key:
             logger.warning("No API key provided for TornStats")
-            return None
+            return {
+                'spy': {
+                    'name': f"Player {player_id}",
+                    'level': 0,
+                    'strength': 0,
+                    'defense': 0,
+                    'speed': 0,
+                    'dexterity': 0,
+                    'update_time': 'Error',
+                    'source': 'Python Adapter',
+                    'status': 'error',
+                    'message': 'No TornStats API key provided'
+                }
+            }
         
         # Use the official TornStats API endpoints
         endpoints = [
