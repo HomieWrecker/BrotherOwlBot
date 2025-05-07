@@ -66,31 +66,83 @@ function startTornWS(callback) {
 }
 
 /**
- * Connect to Torn API WebSocket
+ * Connect to Torn API WebSocket with improved error handling
  * @param {Function} callback - Function to call when data is received
  */
 function connectWebSocket(callback) {
   log('Connecting to Torn API WebSocket...');
   
   try {
-    ws = new WebSocket('wss://api.torn.com/wss/');
+    // Cleanup any existing connection first
+    if (ws) {
+      try {
+        ws.terminate();
+      } catch (error) {
+        // Silently continue
+      }
+      ws = null;
+    }
+    
+    // Initialize a new connection with a timeout
+    ws = new WebSocket('wss://api.torn.com/wss/', {
+      handshakeTimeout: 10000 // 10 second timeout for initial connection
+    });
+    
+    // Set up a connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (ws && ws.readyState !== WebSocket.OPEN) {
+        logWarning('WebSocket connection timeout. Falling back to HTTP polling.');
+        try {
+          ws.terminate();
+        } catch (error) {
+          // Silently continue
+        }
+        ws = null;
+        
+        // Fall back to HTTP
+        fetchChainDataFallback(callback);
+      }
+    }, 15000); // 15 seconds timeout
     
     // Connection opened
     ws.on('open', () => {
       log('Connected to Torn WebSocket API');
       reconnectAttempts = 0;
       
+      // Clear timeout since we're connected
+      clearTimeout(connectionTimeout);
+      
       // Send authentication message
       const authMessage = {
         key: lastApiKey || process.env.TORN_API_KEY,
         channel: 'Faction:Chain'
       };
-      ws.send(JSON.stringify(authMessage));
+      
+      try {
+        ws.send(JSON.stringify(authMessage));
+      } catch (error) {
+        logError('Error sending authentication message:', error);
+        
+        // If there's an error here, terminate and fall back
+        try {
+          ws.terminate();
+        } catch (innerError) {
+          // Silently continue
+        }
+        ws = null;
+        
+        // Fall back to HTTP if we can't authenticate
+        fetchChainDataFallback(callback);
+      }
     });
     
     // Listen for messages
     ws.on('message', (data) => {
       try {
+        // Reset reconnect attempts since we're receiving data
+        reconnectAttempts = 0;
+        
+        // Try to parse the data
         const parsedData = JSON.parse(data);
         
         // Add timestamp for when data was last received
@@ -109,8 +161,8 @@ function connectWebSocket(callback) {
               chainMonitor.processChainData(client, parsedData);
             }
           } catch (error) {
-            // Silently continue if chain monitoring fails
-            // This ensures the main bot functionality isn't affected
+            // Log but continue if chain monitoring fails
+            logError('Error in chain monitor during websocket update:', error);
           }
         }
       } catch (error) {
@@ -120,11 +172,13 @@ function connectWebSocket(callback) {
     
     // Handle errors
     ws.on('error', (error) => {
+      clearTimeout(connectionTimeout); // Clear the timeout
       logError('Torn WebSocket error:', error);
     });
     
     // Connection closed, attempt to reconnect
     ws.on('close', (code, reason) => {
+      clearTimeout(connectionTimeout); // Clear the timeout
       log(`Torn WebSocket connection closed. Code: ${code}, Reason: ${reason || ''}`);
       
       // Connection closed, start reconnect process
@@ -141,6 +195,39 @@ function connectWebSocket(callback) {
         fetchChainDataFallback(callback);
       }
     });
+    
+    // Setup a ping check to detect zombie connections
+    const pingInterval = setInterval(() => {
+      if (ws) {
+        if (ws.readyState === WebSocket.OPEN) {
+          // Connection is open, but check if we've received data recently
+          const lastUpdateTime = global.discordClient?.tornData?.lastUpdate || 0;
+          const timeSinceUpdate = Date.now() - lastUpdateTime;
+          
+          if (timeSinceUpdate > 300000) { // 5 minutes
+            logWarning('WebSocket connection appears to be stale. No data received in 5 minutes.');
+            
+            // Force reconnection
+            try {
+              ws.terminate();
+            } catch (error) {
+              // Silently continue
+            }
+            ws = null;
+            
+            clearInterval(pingInterval);
+            reconnectTornWS(callback);
+          }
+        } else if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+          // Connection is already closed/closing
+          clearInterval(pingInterval);
+        }
+      } else {
+        // WebSocket object no longer exists
+        clearInterval(pingInterval);
+      }
+    }, 60000); // Check every minute
+    
   } catch (error) {
     logError('Error creating WebSocket connection:', error);
     
@@ -163,87 +250,13 @@ function fetchChainDataFallback(callback) {
   
   log('Fetching chain data via REST API (fallback mode)');
   
-  const options = {
-    hostname: 'api.torn.com',
-    path: `/faction/?selections=chain&key=${lastApiKey || process.env.TORN_API_KEY}`,
-    method: 'GET'
-  };
-  
-  const req = https.request(options, res => {
-    let data = '';
-    
-    res.on('data', chunk => {
-      data += chunk;
-    });
-    
-    res.on('end', () => {
-      try {
-        const parsedData = JSON.parse(data);
-        
-        if (parsedData.error) {
-          logError('Torn REST API error:', parsedData.error);
-          // Schedule next fallback attempt
-          fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
-          return;
-        }
-        
-        // Format data to match WebSocket format
-        const formattedData = { 
-          chain: parsedData.chain || {},
-          faction: parsedData.faction || { ID: parsedData.ID },
-          lastUpdate: Date.now(),
-          source: 'http'
-        };
-        
-        // Process the data
-        callback(formattedData);
-        
-        // Also process chain data with the chain monitor if available
-        if (chainMonitor && chainMonitor.processChainData) {
-          try {
-            // Pass through the client for Discord access
-            const client = global.discordClient;
-            if (client) {
-              chainMonitor.processChainData(client, formattedData);
-            }
-          } catch (error) {
-            // Silently continue if chain monitoring fails
-            // This ensures the main bot functionality isn't affected
-          }
-        }
-        
-        // Schedule next fallback update
-        fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
-      } catch (err) {
-        logError('Error parsing REST API response:', err);
-        // Schedule next fallback attempt
-        fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
-      }
-    });
-  });
-  
-  req.on('error', error => {
-    logError('REST API request error:', error);
-    // Schedule retry
-    fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
-  });
-  
-  req.end();
-}
-
-/**
- * Get additional data from the Torn API
- * @param {string} endpoint - API endpoint (user, faction, etc.)
- * @param {string} selections - Comma-separated list of selections
- * @param {string} apiKey - API key to use
- * @returns {Promise<Object>} API response data
- */
-function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_KEY) {
-  return new Promise((resolve, reject) => {
+  // Use a try-catch block to ensure any issues don't crash the app
+  try {
     const options = {
       hostname: 'api.torn.com',
-      path: `/${endpoint}/?selections=${selections}&key=${apiKey}`,
-      method: 'GET'
+      path: `/faction/?selections=chain&key=${lastApiKey || process.env.TORN_API_KEY}`,
+      method: 'GET',
+      timeout: 10000 // 10-second timeout
     };
     
     const req = https.request(options, res => {
@@ -258,22 +271,144 @@ function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_K
           const parsedData = JSON.parse(data);
           
           if (parsedData.error) {
-            reject(parsedData.error);
+            logError('Torn REST API error:', parsedData.error);
+            // Schedule next fallback attempt
+            fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
             return;
           }
           
-          resolve(parsedData);
-        } catch (error) {
-          reject(error);
+          // Format data to match WebSocket format
+          const formattedData = { 
+            chain: parsedData.chain || {},
+            faction: parsedData.faction || { ID: parsedData.ID },
+            lastUpdate: Date.now(),
+            source: 'http'
+          };
+          
+          // Process the data
+          callback(formattedData);
+          
+          // Also process chain data with the chain monitor if available
+          if (chainMonitor && chainMonitor.processChainData) {
+            try {
+              // Pass through the client for Discord access
+              const client = global.discordClient;
+              if (client) {
+                chainMonitor.processChainData(client, formattedData);
+              }
+            } catch (error) {
+              // Silently continue if chain monitoring fails
+              // This ensures the main bot functionality isn't affected
+              logError('Error in chain monitor during fallback update:', error);
+            }
+          }
+          
+          // Schedule next fallback update - ensure fallback always continues
+          fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
+        } catch (err) {
+          logError('Error parsing REST API response:', err);
+          // Schedule next fallback attempt - ensure fallback always continues
+          fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
         }
+      });
+      
+      // Handle response timeout
+      res.on('timeout', () => {
+        logError('REST API response timeout');
+        req.abort();
       });
     });
     
+    // Set request timeout
+    req.setTimeout(10000, () => {
+      logError('REST API request timeout');
+      req.abort();
+    });
+    
     req.on('error', error => {
-      reject(error);
+      logError('REST API request error:', error);
+      // Schedule retry - ensure fallback always continues
+      fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
     });
     
     req.end();
+  } catch (error) {
+    logError('Critical error in fetchChainDataFallback:', error);
+    // Even if everything fails, keep trying
+    fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
+  }
+}
+
+/**
+ * Get additional data from the Torn API
+ * @param {string} endpoint - API endpoint (user, faction, etc.)
+ * @param {string} selections - Comma-separated list of selections
+ * @param {string} apiKey - API key to use
+ * @returns {Promise<Object>} API response data
+ */
+function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_KEY) {
+  return new Promise((resolve, reject) => {
+    try {
+      const options = {
+        hostname: 'api.torn.com',
+        path: `/${endpoint}/?selections=${selections}&key=${apiKey}`,
+        method: 'GET',
+        timeout: 10000 // 10-second timeout
+      };
+      
+      const req = https.request(options, res => {
+        let data = '';
+        
+        res.on('data', chunk => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            if (!data || data.trim() === '') {
+              reject(new Error('Empty response from Torn API'));
+              return;
+            }
+            
+            const parsedData = JSON.parse(data);
+            
+            if (parsedData.error) {
+              reject(parsedData.error);
+              return;
+            }
+            
+            resolve(parsedData);
+          } catch (error) {
+            logError(`Error parsing API response from ${endpoint}:`, error);
+            reject(error);
+          }
+        });
+        
+        // Handle response timeout
+        res.on('timeout', () => {
+          logError(`API response timeout for ${endpoint}`);
+          req.abort();
+          reject(new Error('API response timeout'));
+        });
+      });
+      
+      // Set request timeout
+      req.setTimeout(10000, () => {
+        logError(`API request timeout for ${endpoint}`);
+        req.abort();
+        reject(new Error('API request timeout'));
+      });
+      
+      req.on('error', error => {
+        logError(`API request error for ${endpoint}:`, error);
+        reject(error);
+      });
+      
+      req.end();
+    } catch (error) {
+      logError(`Critical error in API request for ${endpoint}:`, error);
+      reject(error);
+    }
   });
 }
 
