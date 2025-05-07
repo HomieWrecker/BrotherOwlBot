@@ -319,10 +319,83 @@ async function submitStatsToTornStats(playerId, statsData, apiKey) {
   }
 }
 
+/**
+ * Get player stats from all available sources and combine them
+ * @param {string} playerId - Player ID
+ * @param {Object} apiKeys - API keys for different services
+ * @returns {Promise<Object>} Combined player stats
+ */
+async function getPlayerStatsFromAllSources(playerId, apiKeys = {}) {
+  try {
+    const results = {
+      sources: {},
+      combinedStats: null,
+      confidence: 'Low',
+      lastUpdated: null
+    };
+    
+    // Fetch from each available source in parallel
+    const [yataResult, tornStatsResult, tornToolsResult, tornPDAResult] = await Promise.all([
+      apiKeys.yata ? fetchFromYATA(playerId, apiKeys.yata) : null,
+      apiKeys.tornstats ? fetchFromTornStats(playerId, apiKeys.tornstats) : null,
+      apiKeys.torntools ? fetchFromTornTools(playerId, apiKeys.torntools) : null,
+      apiKeys.tornpda ? fetchFromTornPDA(playerId, apiKeys.tornpda) : null
+    ]);
+    
+    // Store results by source
+    if (yataResult) results.sources.yata = yataResult;
+    if (tornStatsResult) results.sources.tornstats = tornStatsResult;
+    if (tornToolsResult) results.sources.torntools = tornToolsResult;
+    if (tornPDAResult) results.sources.tornpda = tornPDAResult;
+    
+    // Calculate which is most recent and most reliable
+    let bestSource = null;
+    let bestSourceName = null;
+    let latestTimestamp = 0;
+    
+    for (const [sourceName, source] of Object.entries(results.sources)) {
+      const timestamp = source.playerProfile?.timestamp || 0;
+      if (timestamp > latestTimestamp) {
+        latestTimestamp = timestamp;
+        bestSource = source;
+        bestSourceName = sourceName;
+      }
+    }
+    
+    // Set combined result to the best source if available
+    if (bestSource) {
+      results.combinedStats = { ...bestSource };
+      results.combinedStats.source = bestSourceName;
+      results.lastUpdated = new Date(latestTimestamp).toISOString();
+      
+      // Set confidence based on number of sources
+      const sourceCount = Object.keys(results.sources).length;
+      if (sourceCount >= 3) {
+        results.confidence = 'High';
+      } else if (sourceCount >= 2) {
+        results.confidence = 'Medium';
+      } else {
+        results.confidence = 'Low';
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    logError(`Error in getPlayerStatsFromAllSources for player ${playerId}:`, error);
+    return {
+      sources: {},
+      combinedStats: null,
+      confidence: 'None',
+      error: error.message
+    };
+  }
+}
+
 module.exports = {
   fetchFromYATA,
   fetchFromTornStats,
   fetchFromTornTools,
   fetchFromTornPDA,
-  submitPlayerStats
+  submitPlayerStats,
+  getPlayerStatsFromAllSources
 };

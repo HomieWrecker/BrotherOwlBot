@@ -82,13 +82,86 @@ async function fetchPlayerApiData(playerId, apiKey) {
 }
 
 /**
- * Simple API-based method to avoid web scraping
+ * Extract content from a web page using trafilatura (if available)
  * @param {string} url - URL to get content from
  * @returns {Promise<string>} Content message
  */
 async function extractWebContent(url) {
-  log('Web content extraction is disabled to ensure bot stability');
-  return Promise.resolve('Web content extraction is disabled to ensure bot stability. Please use API methods instead.');
+  try {
+    // First try to use the Python-based trafilatura if available
+    try {
+      // Execute the Python script to get content
+      const { execSync } = require('child_process');
+      const result = execSync(`python3 -c "import trafilatura; downloaded = trafilatura.fetch_url('${url}'); print(trafilatura.extract(downloaded))"`, { encoding: 'utf8' });
+      
+      if (result && result.trim().length > 0) {
+        return result.trim();
+      }
+    } catch (pythonError) {
+      log('Trafilatura not available, falling back to basic fetching:', pythonError.message);
+    }
+    
+    // Fallback to basic fetching
+    const response = await fetch(url);
+    const html = await response.text();
+    
+    // Very basic HTML text extraction
+    const text = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                     .replace(/<[^>]+>/g, ' ')
+                     .replace(/\s{2,}/g, ' ')
+                     .trim();
+    
+    return text;
+  } catch (error) {
+    logError('Error extracting web content:', error);
+    return 'Error extracting web content. Please try using API methods instead.';
+  }
+}
+
+/**
+ * Scrape a player's Torn profile page for public data
+ * @param {string} playerId - Torn player ID
+ * @returns {Promise<Object>} Public profile data
+ */
+async function scrapePlayerProfile(playerId) {
+  try {
+    const url = `https://www.torn.com/profiles.php?XID=${playerId}`;
+    log(`Scraping profile from ${url}`);
+    
+    const content = await extractWebContent(url);
+    
+    // Parse the content to extract useful information
+    // This is a simplified version - real implementation would be more robust
+    let parsedData = {
+      id: playerId,
+      name: extractInfo(content, /Name:\s*([^<\n]+)/),
+      level: parseInt(extractInfo(content, /Level:\s*(\d+)/)) || 0,
+      status: extractInfo(content, /Status:\s*([^<\n]+)/),
+      lastAction: extractInfo(content, /Last Action:\s*([^<\n]+)/),
+      faction: {
+        name: extractInfo(content, /Faction:\s*([^<\n]+)/),
+        position: extractInfo(content, /Position:\s*([^<\n]+)/)
+      },
+      awards: parseInt(extractInfo(content, /Awards:\s*(\d+)/)) || 0
+    };
+    
+    return parsedData;
+  } catch (error) {
+    logError(`Error scraping player profile ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Helper function to extract information from scraped content using regex
+ * @param {string} content - The scraped content
+ * @param {RegExp} regex - Regular expression with a capture group
+ * @returns {string|null} Extracted information or null if not found
+ */
+function extractInfo(content, regex) {
+  const match = content.match(regex);
+  return match ? match[1].trim() : null;
 }
 
 /**
@@ -387,5 +460,6 @@ module.exports = {
   estimatePlayerActivity,
   calculateWinProbability,
   calculateFairFightBonus,
-  extractWebContent
+  extractWebContent,
+  scrapePlayerProfile
 };
