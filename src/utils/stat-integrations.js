@@ -235,7 +235,21 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
     
     log(`Fetching spy data from TornStats for player ${playerId}`);
     
-    // Try multiple possible API formats as the documentation isn't completely clear
+    // First attempt: Try using the Python adapter (modern approach)
+    try {
+      const tornstatsBridge = require('./tornstats_bridge');
+      const pythonData = await tornstatsBridge.getPlayerDataFromTornStats(playerId, apiKey);
+      
+      if (pythonData) {
+        log(`Successfully fetched data using Python adapter for player ${playerId}`);
+        return pythonData;
+      }
+    } catch (pythonError) {
+      logError(`Error using Python adapter: ${pythonError.message}`);
+      log(`Falling back to JavaScript implementation for player ${playerId}`);
+    }
+    
+    // Traditional approach with multiple formats as fallback
     // Format 1: /api/v1/{key}/spy/user/{USER_ID}
     let spyResponse = await makeRequest({
       hostname: 'www.tornstats.com',
@@ -243,7 +257,8 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+        'User-Agent': 'BrotherOwlDiscordBot/1.0',
+        'Referer': 'https://www.tornstats.com/'
       }
     });
     
@@ -260,7 +275,8 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+        'User-Agent': 'BrotherOwlDiscordBot/1.0',
+        'Referer': 'https://www.tornstats.com/'
       }
     });
     
@@ -277,7 +293,8 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+        'User-Agent': 'BrotherOwlDiscordBot/1.0',
+        'Referer': 'https://www.tornstats.com/'
       }
     });
     
@@ -287,23 +304,58 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       return spyResponse.data;
     }
     
-    // Format 4: Try the web page directly and parse HTML
+    // Format 4: Try newer API endpoints suggested by the user
+    spyResponse = await makeRequest({
+      hostname: 'www.tornstats.com',
+      path: `/api/v1/player/${playerId}`,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'BrotherOwlDiscordBot/1.0',
+        'Referer': 'https://www.tornstats.com/',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    
+    log(`TornStats modern API response status: ${spyResponse.statusCode}`);
+    if (spyResponse.statusCode === 200 && !spyResponse.error && spyResponse.data) {
+      log(`Successfully fetched spy data from TornStats modern API for player ${playerId}`);
+      return spyResponse.data;
+    }
+    
+    // Format 5: Try the web page directly and parse HTML
     log(`Trying to get stats from TornStats web page for player ${playerId}`);
     
-    // First try the direct player page - no login required
+    // First try the profiles path
     let htmlResponse = await makeRequest({
       hostname: 'www.tornstats.com',
-      path: `/player.php?id=${playerId}`,
+      path: `/profiles/${playerId}`,
       method: 'GET',
       headers: {
         'Accept': 'text/html',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+        'User-Agent': 'BrotherOwlDiscordBot/1.0',
+        'Referer': 'https://www.tornstats.com/'
       }
     }, null, true); // Expect HTML here
     
-    // If that fails, try the spy.php endpoint which sometimes works without authentication
+    // If that fails, try the player.php path
     if (htmlResponse.statusCode !== 200 || !htmlResponse.rawHtml) {
       log(`First HTML approach failed, trying alternate URL for player ${playerId}`);
+      htmlResponse = await makeRequest({
+        hostname: 'www.tornstats.com',
+        path: `/player.php?id=${playerId}`,
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Referer': 'https://www.tornstats.com/'
+        }
+      }, null, true); // Expect HTML here
+    }
+    
+    // Then try spy.php
+    if (htmlResponse.statusCode !== 200 || !htmlResponse.rawHtml) {
+      log(`Second HTML approach failed, trying spy URL for player ${playerId}`);
       htmlResponse = await makeRequest({
         hostname: 'www.tornstats.com',
         path: `/spy.php?id=${playerId}`,
@@ -311,6 +363,7 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
         headers: {
           'Accept': 'text/html',
           'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Referer': 'https://www.tornstats.com/',
           'Cookie': `tornstats_api=${apiKey}`  // Some endpoints accept API key as a cookie
         }
       }, null, true); // Expect HTML here
@@ -327,97 +380,58 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       }
     }
     
-    // If all spy attempts fail, try a stats endpoint
-    let statsResponse = await makeRequest({
-      hostname: 'www.tornstats.com',
-      path: `/api/v1/${apiKey}/stats/${playerId}`,
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0'
-      }
-    });
-    
-    log(`TornStats stats API response status: ${statsResponse.statusCode}`);
-    if (statsResponse.statusCode === 200 && !statsResponse.error && statsResponse.data) {
-      log(`Successfully fetched stats data from TornStats for player ${playerId}`);
-      return statsResponse.data;
-    }
-    
-    // Attempt to fall back to direct login page with cookie
-    log(`Trying to access TornStats with login cookie for player ${playerId}`);
+    // If all direct API attempts fail, try authentication with cookie
+    log(`Trying to access TornStats with authentication for player ${playerId}`);
     try {
-      const loginResponse = await makeRequest({
+      // Get the login page first to get the CSRF token
+      const loginPageResponse = await makeRequest({
         hostname: 'www.tornstats.com',
-        path: `/login.php`,
+        path: `/login`,
         method: 'GET',
         headers: {
           'Accept': 'text/html',
           'User-Agent': 'BrotherOwlDiscordBot/1.0',
-          'Cookie': `api=${apiKey}`  // Try API key as cookie
+          'Referer': 'https://www.tornstats.com/'
         }
       }, null, true);
       
-      // If login page worked, try to get player data again using established cookies
-      if (loginResponse.statusCode === 200 || loginResponse.statusCode === 302) {
-        const cookies = loginResponse.headers?.['set-cookie'];
-        let cookieHeader = `api=${apiKey}`;
-        
-        if (cookies) {
-          cookieHeader = cookies.join('; ');
-        }
-        
-        htmlResponse = await makeRequest({
-          hostname: 'www.tornstats.com',
-          path: `/spy.php?id=${playerId}`,
-          method: 'GET',
-          headers: {
-            'Accept': 'text/html',
-            'User-Agent': 'BrotherOwlDiscordBot/1.0',
-            'Cookie': cookieHeader
-          }
-        }, null, true);
-        
-        if (htmlResponse.statusCode === 200 && htmlResponse.rawHtml) {
-          log(`Successfully fetched player data after login for ${playerId}`);
-          
-          // Try to extract battle stats from HTML
-          const statsData = extractStatsFromTornStatsHtml(htmlResponse.rawHtml, playerId);
-          if (statsData) {
-            log(`Successfully extracted stats from TornStats HTML after login for player ${playerId}`);
-            return statsData;
-          }
+      // Extract CSRF token
+      let csrfToken = null;
+      if (loginPageResponse.statusCode === 200 && loginPageResponse.rawHtml) {
+        const csrfMatch = loginPageResponse.rawHtml.match(/<input type="hidden" name="_token" value="([^"]+)"/);
+        if (csrfMatch && csrfMatch[1]) {
+          csrfToken = csrfMatch[1];
         }
       }
+      
+      // If we got a CSRF token, we could try to login with API key, but that's beyond the scope
+      // of this implementation right now. The Python adapter should handle this case better.
+      
+      log(`Authentication flow attempted but requires traditional email/password login`);
     } catch (error) {
-      log(`Error trying login fallback: ${error.message}`);
+      log(`Error in authentication flow: ${error.message}`);
     }
     
-    // Final attempt - full authentication flow
-    log(`All direct methods failed, we need user authentication for TornStats`);
+    // Final fallback - use public source estimation
+    log(`All TornStats methods failed, falling back to public source estimation`);
     
-    // For development testing ONLY - never used in production
-    if (process.env.NODE_ENV === 'development') {
-      log(`Development mode - using public source estimation instead of mock data`);
-      
-      // In development, we use the estimator instead of mock data
-      const statEstimator = require('./stat-estimator');
-      const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
-      
-      if (estimatedStats && estimatedStats.battleStats) {
-        return {
-          spy: {
-            name: estimatedStats.playerName || `Player ${playerId}`,
-            level: estimatedStats.level || 1,
-            strength: estimatedStats.battleStats.strength || 0,
-            defense: estimatedStats.battleStats.defense || 0,
-            speed: estimatedStats.battleStats.speed || 0,
-            dexterity: estimatedStats.battleStats.dexterity || 0,
-            update_time: new Date().toISOString(),
-            source: 'Public Source Estimation (TornStats unavailable)'
-          }
-        };
-      }
+    // Use the estimator as a fallback
+    const statEstimator = require('./stat-estimator');
+    const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
+    
+    if (estimatedStats && estimatedStats.battleStats) {
+      return {
+        spy: {
+          name: estimatedStats.playerName || `Player ${playerId}`,
+          level: estimatedStats.level || 1,
+          strength: estimatedStats.battleStats.strength || 0,
+          defense: estimatedStats.battleStats.defense || 0,
+          speed: estimatedStats.battleStats.speed || 0,
+          dexterity: estimatedStats.battleStats.dexterity || 0,
+          update_time: new Date().toISOString(),
+          source: 'Public Source Estimation (TornStats unavailable)'
+        }
+      };
     }
     
     logError(`Could not fetch spy or stats data from TornStats for player ${playerId}`);
