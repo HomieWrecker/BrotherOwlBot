@@ -66,8 +66,18 @@ const targetfinderCommand = {
    */
   async execute(interaction, client) {
     try {
-      // Safely execute the command with proper error isolation
-      return await safeExecuteCommand(interaction, client);
+      // Completely disabled version that doesn't use any external services
+      const disabledEmbed = new EmbedBuilder()
+        .setColor(Colors.Orange)
+        .setTitle('Command Temporarily Disabled')
+        .setDescription(`The target finder command is currently undergoing maintenance to ensure bot stability. Please check back later.`)
+        .addFields(
+          { name: 'Available Alternatives', value: 'Please use the `/status` command to check the bot connectivity.' }
+        )
+        .setFooter({ text: 'This is a temporary measure to maintain bot stability' });
+      
+      await interaction.reply({ embeds: [disabledEmbed], ephemeral: true });
+      return true;
     } catch (error) {
       // Comprehensive error handling to prevent affecting core bot functionality
       logError('Error executing targetfinder command (protected):', error);
@@ -76,12 +86,12 @@ const targetfinderCommand = {
       try {
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
-            content: '❌ There was an error finding targets. This error has been logged and will not affect other bot functionality.',
+            content: '❌ The target finder command is temporarily disabled.',
             ephemeral: true
           });
         } else if (interaction.deferred) {
           await interaction.followUp({
-            content: '❌ There was an error finding targets. This error has been logged and will not affect other bot functionality.',
+            content: '❌ The target finder command is temporarily disabled.',
             ephemeral: true
           });
         }

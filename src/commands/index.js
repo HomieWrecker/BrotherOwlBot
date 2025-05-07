@@ -6,7 +6,7 @@ const { apikeyCommand } = require('./apikey');
 const { playerStatsCommand } = require('./playerstats');
 
 // Try to load new commands without affecting existing functionality
-let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand, giveawayCommand, activitymapCommand, warpayCommand, battlestatsCommand;
+let factionCommand, attacksCommand, bankCommand, eventsCommand, chainsheetCommand, welcomeCommand, factionstatsCommand, warcountdownCommand, warstrategyCommand, botpermissionsCommand, spyCommand, targetfinderCommand, giveawayCommand, activitymapCommand, warpayCommand, battlestatsCommand, apiconnectionCommand;
 try {
   factionCommand = require('./faction').factionCommand;
   log('Loaded faction command');
