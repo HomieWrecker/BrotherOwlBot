@@ -129,9 +129,13 @@ async function fetchFromTornStats(playerId, apiKey) {
     }
     
     const options = {
-      hostname: 'www.tornstats.com',
-      path: `/api/v2/${apiKey}/spy/${playerId}`,
-      method: 'GET'
+      hostname: 'api.tornstats.com',
+      path: `/v1/spy/${playerId}?key=${apiKey}`,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+      }
     };
     
     const response = await makeRequest(options);
@@ -142,24 +146,34 @@ async function fetchFromTornStats(playerId, apiKey) {
     }
     
     // Extract relevant battle stats if available
-    if (response.data && response.data.status === 'success' && response.data.spy) {
-      const stats = response.data.spy;
+    // The format may vary based on TornStats API response structure
+    if (response.data) {
+      // Check if we have the stats in the expected format
+      let stats = null;
       
-      return {
-        battleStats: {
-          strength: stats.strength || 0,
-          speed: stats.speed || 0,
-          dexterity: stats.dexterity || 0,
-          defense: stats.defense || 0,
-          total: (stats.strength || 0) + (stats.speed || 0) + 
-                 (stats.dexterity || 0) + (stats.defense || 0)
-        },
-        playerProfile: {
-          level: stats.level || 0,
-          timestamp: Date.now(),
-          update_time: stats.update_time || null
-        }
-      };
+      if (response.data.spy) {
+        stats = response.data.spy;
+      } else if (response.data.status && response.data.status === 'ok' && response.data.stats) {
+        stats = response.data.stats;
+      }
+      
+      if (stats && stats.strength && stats.defense && stats.speed && stats.dexterity) {
+        return {
+          battleStats: {
+            strength: stats.strength || 0,
+            speed: stats.speed || 0,
+            dexterity: stats.dexterity || 0,
+            defense: stats.defense || 0,
+            total: (stats.strength || 0) + (stats.speed || 0) + 
+                   (stats.dexterity || 0) + (stats.defense || 0)
+          },
+          playerProfile: {
+            level: stats.level || 0,
+            timestamp: Date.now(),
+            update_time: stats.update_time || null
+          }
+        };
+      }
     }
     
     return null;
@@ -183,32 +197,39 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
     
     log(`Fetching spy data from TornStats for player ${playerId}`);
     
-    // First check if we can use the direct spy endpoint
+    // TornStats API endpoint format (corrected based on actual format)
+    // Using /api/v1/spy/{playerID} format
     const spyOptions = {
-      hostname: 'www.tornstats.com',
-      path: `/api/v2/${apiKey}/spy/${playerId}`,
-      method: 'GET'
+      hostname: 'api.tornstats.com',
+      path: `/v1/spy/${playerId}?key=${apiKey}`,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+      }
     };
     
     const spyResponse = await makeRequest(spyOptions);
     
-    if (spyResponse.statusCode === 200 && !spyResponse.error && 
-        spyResponse.data && spyResponse.data.status === 'success') {
+    if (spyResponse.statusCode === 200 && !spyResponse.error && spyResponse.data) {
       log(`Successfully fetched spy data from TornStats for player ${playerId}`);
       return spyResponse.data;
     }
     
     // If direct spy fails, fall back to the stats endpoint
     const statsOptions = {
-      hostname: 'www.tornstats.com',
-      path: `/api/v2/${apiKey}/stats/${playerId}`,
-      method: 'GET'
+      hostname: 'api.tornstats.com',
+      path: `/v1/stats/player/${playerId}?key=${apiKey}`,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+      }
     };
     
     const statsResponse = await makeRequest(statsOptions);
     
-    if (statsResponse.statusCode === 200 && !statsResponse.error && 
-        statsResponse.data && statsResponse.data.status === 'success') {
+    if (statsResponse.statusCode === 200 && !statsResponse.error && statsResponse.data) {
       log(`Successfully fetched stats data from TornStats for player ${playerId}`);
       return statsResponse.data;
     }
