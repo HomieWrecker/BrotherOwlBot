@@ -446,6 +446,7 @@ async function getPlayerStatsFromAllSources(playerId, apiKeys = {}) {
 module.exports = {
   fetchFromYATA,
   fetchFromTornStats,
+  fetchSpyFromTornStats,
   fetchFromTornTools,
   fetchFromTornPDA,
   submitPlayerStats,
