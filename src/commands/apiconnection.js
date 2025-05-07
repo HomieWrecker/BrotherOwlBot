@@ -1,8 +1,8 @@
 /**
  * API Connection Status Command
  * 
- * This command provides detailed information about the current API connection status,
- * including WebSocket and HTTP connections, active subscriptions, and metrics.
+ * This command provides basic information about the current API connection status
+ * and allows users to manually reconnect if needed.
  */
 
 const { 
@@ -17,20 +17,18 @@ const { log } = require('../utils/logger');
 const { BOT_CONFIG } = require('../config');
 const { reconnectTornWS, resetAllConnections } = require('../torn-ws');
 
-const commandName = 'apiconnection';
-
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName(commandName)
+    .setName('apiconnection')
     .setDescription('Check the status of Torn API connections and manage connectivity')
     .addSubcommand(subcommand =>
       subcommand
         .setName('status')
-        .setDescription('View detailed information about API connection status'))
+        .setDescription('View information about API connection status'))
     .addSubcommand(subcommand =>
       subcommand
         .setName('reconnect')
-        .setDescription('Reconnect to the Torn API WebSocket'))
+        .setDescription('Reconnect to the Torn API'))
     .addSubcommand(subcommand =>
       subcommand
         .setName('reset')
@@ -114,24 +112,6 @@ module.exports = {
 async function handleStatusSubcommand(interaction, client) {
   await interaction.deferReply();
   
-  // Get connection status from global data
-  let connectionStatus = null;
-  
-  try {
-    // Get status from global connection data
-    if (global.apiConnectionData) {
-      connectionStatus = {
-        http: {
-          lastSuccessfulRequest: global.apiConnectionData.lastSuccessfulRequest || 0,
-          requestStats: global.apiConnectionData.requestStats || { totalRequests: 0 }
-        }
-      };
-    }
-  } catch (error) {
-    // If we can't access the status, we'll use approximated status
-    log('Could not get direct connection status from API service');
-  }
-  
   // Create status embed
   const statusEmbed = new EmbedBuilder()
     .setColor(Colors.Blue)
@@ -140,70 +120,36 @@ async function handleStatusSubcommand(interaction, client) {
     .setTimestamp()
     .setFooter({ text: BOT_CONFIG.name });
   
-  // Add basic connection info that's always available
-  const lastUpdate = client.tornData?.lastUpdate ? new Date(client.tornData.lastUpdate).toISOString() : 'No data received';
+  // Add basic connection info
+  const lastUpdate = client.tornData?.lastUpdate 
+    ? new Date(client.tornData.lastUpdate).toISOString() 
+    : 'No data received';
+    
   const dataSource = client.tornData?.source || 'Unknown';
+  const secondsAgo = client.tornData?.lastUpdate 
+    ? Math.floor((Date.now() - client.tornData.lastUpdate) / 1000)
+    : 0;
+    
+  let connectionStatus = '🔴 Disconnected';
+  if (secondsAgo > 0) {
+    if (secondsAgo < 60) {
+      connectionStatus = '🟢 Connected';
+    } else if (secondsAgo < 300) { // 5 minutes
+      connectionStatus = '🟡 Degraded';
+    }
+  }
   
   statusEmbed.addFields(
+    { name: 'Connection Status', value: connectionStatus, inline: true },
     { name: 'Data Source', value: dataSource, inline: true },
-    { name: 'Last Update', value: lastUpdate, inline: true }
+    { name: 'Last Update', value: lastUpdate, inline: false }
   );
   
-  // Add detailed connection info if available
-  if (connectionStatus) {
-    // If we have a last successful request timestamp, calculate how long ago it was
-    const lastSuccessTime = connectionStatus.http.lastSuccessfulRequest;
-    let lastSuccessDisplay = 'Never';
-    let connectionStatusText = '🔴 Disconnected';
-    
-    if (lastSuccessTime > 0) {
-      const now = Date.now();
-      const secondsAgo = Math.floor((now - lastSuccessTime) / 1000);
-      
-      if (secondsAgo < 60) {
-        lastSuccessDisplay = `${secondsAgo} seconds ago`;
-        connectionStatusText = '🟢 Connected';
-      } else if (secondsAgo < 3600) {
-        const minutes = Math.floor(secondsAgo / 60);
-        lastSuccessDisplay = `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-        connectionStatusText = secondsAgo < 120 ? '🟢 Connected' : '🟡 Degraded';
-      } else {
-        const hours = Math.floor(secondsAgo / 3600);
-        lastSuccessDisplay = `${hours} hour${hours === 1 ? '' : 's'} ago`;
-        connectionStatusText = '🔴 Disconnected';
-      }
-    }
-    
-    // Add API connection status
+  // Add chain data if available
+  if (client.tornData?.chain) {
+    const chainId = client.tornData.chain.current || 'None';
     statusEmbed.addFields(
-      { name: 'Connection Status', value: connectionStatusText, inline: true },
-      { name: 'Last Successful Request', value: lastSuccessDisplay, inline: true }
-    );
-    
-    // Add HTTP info if stats are available
-    if (connectionStatus.http.requestStats) {
-      const totalRequests = connectionStatus.http.requestStats.totalRequests || 0;
-      const resetCount = connectionStatus.http.requestStats.resetCount || 0;
-      
-      statusEmbed.addFields(
-        { name: 'Total API Requests', value: totalRequests.toString(), inline: true },
-        { name: 'Connection Resets', value: resetCount.toString(), inline: true }
-      );
-      
-      // If we have detailed endpoint timings, show them
-      if (connectionStatus.http.requestStats.chain) {
-        const lastChainRequestTime = new Date(connectionStatus.http.requestStats.chain).toISOString();
-        statusEmbed.addFields(
-          { name: 'Last Chain API Request', value: lastChainRequestTime, inline: false }
-        );
-      }
-    }
-  } else {
-    // Fallback status display
-    const chainData = client.tornData?.chain ? 'Available' : 'Not available';
-    
-    statusEmbed.addFields(
-      { name: 'Chain Data', value: chainData, inline: true }
+      { name: 'Current Chain', value: chainId.toString(), inline: true }
     );
   }
   
@@ -244,7 +190,7 @@ async function handleReconnectSubcommand(interaction, client) {
   const embed = new EmbedBuilder()
     .setColor(Colors.Green)
     .setTitle('API Reconnection Initiated')
-    .setDescription('Reconnecting to the Torn API WebSocket...')
+    .setDescription('Reconnecting to the Torn API...')
     .setTimestamp()
     .setFooter({ text: BOT_CONFIG.name });
   

@@ -1,12 +1,12 @@
 /**
- * Enhanced Torn API connectivity module
- * Uses intelligent HTTP requests with optimized rate limiting
- * prioritizing real-time data for critical updates.
+ * WebSocket connectivity module for Torn API
+ * Maintains connection and handles data streaming
  */
+const WebSocket = require('ws');
 const { log, logError, logWarning } = require('./utils/logger');
 const https = require('https');
 
-// Import chain monitor but without modifying existing imports
+// Import chain monitor
 let chainMonitor = null;
 try {
   chainMonitor = require('./services/chain-monitor');
@@ -15,76 +15,158 @@ try {
   // Silently continue if the module doesn't exist
 }
 
-// Rate limiting constants for different endpoints
-const RATE_LIMITS = {
-  CHAIN: 30000,       // 30 seconds - Chain status is high-priority
-  ATTACKS: 15000,     // 15 seconds - Recent attacks
-  DEFAULT: 60000      // 1 minute - General safety rate limit
-};
-
-// Connection state tracking
-let lastRequestTime = {};
-let updateTimer = null;
-let healthCheckTimer = null;
-let globalCallback = null;
+// Connection state
+let ws = null;
+let reconnectTimer = null;
+let fallbackTimer = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_DELAY = 5000; // 5 seconds
+const FALLBACK_INTERVAL = 30000; // 30 seconds
+let lastApiKey = null;
 
 /**
- * Starts data connection to the Torn API with intelligent HTTP polling
+ * Starts WebSocket connection to the Torn API
  * @param {Function} callback - Function to call when data is received
  */
 function startTornWS(callback) {
-  globalCallback = callback;
+  // Initialize
+  reconnectAttempts = 0;
   
-  // Initialize timer state
-  if (updateTimer) {
-    clearTimeout(updateTimer);
-    updateTimer = null;
+  // Close existing connection if any
+  if (ws) {
+    try {
+      ws.terminate();
+    } catch (error) {
+      // Silently continue
+    }
+    ws = null;
   }
   
-  // Start polling for chain data
-  log('Starting Torn API data service with intelligent HTTP polling');
-  fetchChainData(callback);
+  // Clear any existing timers
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   
-  // Start health check for connection monitoring
-  startHealthCheck(callback);
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
+  }
+
+  lastApiKey = process.env.TORN_API_KEY;
   
-  return { status: 'running' };
+  // Connect WebSocket
+  connectWebSocket(callback);
+  
+  // Start fallback timer for reliability
+  fetchChainDataFallback(callback);
+  
+  return { ws, status: 'connecting' };
 }
 
 /**
- * Fetch chain data via optimized HTTP
+ * Connect to Torn API WebSocket
  * @param {Function} callback - Function to call when data is received
  */
-function fetchChainData(callback) {
-  // Clear existing timer
-  if (updateTimer) {
-    clearTimeout(updateTimer);
-    updateTimer = null;
+function connectWebSocket(callback) {
+  log('Connecting to Torn API WebSocket...');
+  
+  try {
+    ws = new WebSocket('wss://api.torn.com/wss/');
+    
+    // Connection opened
+    ws.on('open', () => {
+      log('Connected to Torn WebSocket API');
+      reconnectAttempts = 0;
+      
+      // Send authentication message
+      const authMessage = {
+        key: lastApiKey || process.env.TORN_API_KEY,
+        channel: 'Faction:Chain'
+      };
+      ws.send(JSON.stringify(authMessage));
+    });
+    
+    // Listen for messages
+    ws.on('message', (data) => {
+      try {
+        const parsedData = JSON.parse(data);
+        
+        // Add timestamp for when data was last received
+        parsedData.lastUpdate = Date.now();
+        parsedData.source = 'websocket';
+        
+        // Process with callback (for main bot functionality)
+        callback(parsedData);
+        
+        // Also process chain data with the chain monitor if available
+        if (chainMonitor && chainMonitor.processChainData) {
+          try {
+            // Pass through the client for Discord access
+            const client = global.discordClient;
+            if (client) {
+              chainMonitor.processChainData(client, parsedData);
+            }
+          } catch (error) {
+            // Silently continue if chain monitoring fails
+            // This ensures the main bot functionality isn't affected
+          }
+        }
+      } catch (error) {
+        logError('Error parsing WebSocket message:', error);
+      }
+    });
+    
+    // Handle errors
+    ws.on('error', (error) => {
+      logError('Torn WebSocket error:', error);
+    });
+    
+    // Connection closed, attempt to reconnect
+    ws.on('close', (code, reason) => {
+      log(`Torn WebSocket connection closed. Code: ${code}, Reason: ${reason || ''}`);
+      
+      // Connection closed, start reconnect process
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = RECONNECT_DELAY * reconnectAttempts;
+        log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay / 1000} seconds...`);
+        
+        reconnectTimer = setTimeout(() => {
+          connectWebSocket(callback);
+        }, delay);
+      } else {
+        logWarning(`Maximum reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Falling back to HTTP polling.`);
+        fetchChainDataFallback(callback);
+      }
+    });
+  } catch (error) {
+    logError('Error creating WebSocket connection:', error);
+    
+    // If we can't create a WebSocket, fall back to HTTP
+    logWarning('Falling back to HTTP polling due to WebSocket creation error.');
+    fetchChainDataFallback(callback);
+  }
+}
+
+/**
+ * Fetch chain data via HTTP API (fallback method)
+ * @param {Function} callback - Function to call when data is received
+ */
+function fetchChainDataFallback(callback) {
+  // Clear any existing timers
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
   }
   
-  // Implement rate limiting
-  const now = Date.now();
-  const timeSinceLastRequest = now - (lastRequestTime.chain || 0);
+  log('Fetching chain data via REST API (fallback mode)');
   
-  if (timeSinceLastRequest < RATE_LIMITS.CHAIN) {
-    // If we've fetched too recently, schedule next update respecting the rate limit
-    const delay = RATE_LIMITS.CHAIN - timeSinceLastRequest;
-    log(`Rate limiting chain request. Next update in ${delay}ms`);
-    updateTimer = setTimeout(() => fetchChainData(callback), delay);
-    return;
-  }
-  
-  // Update last request time
-  lastRequestTime.chain = now;
-  
-  log('Fetching chain data via REST API');
-  
-  // Build request options
   const options = {
     hostname: 'api.torn.com',
-    path: `/faction/?selections=chain&key=${process.env.TORN_API_KEY}`,
-    method: 'GET',
-    timeout: 10000 // 10 second timeout
+    path: `/faction/?selections=chain&key=${lastApiKey || process.env.TORN_API_KEY}`,
+    method: 'GET'
   };
   
   const req = https.request(options, res => {
@@ -100,12 +182,12 @@ function fetchChainData(callback) {
         
         if (parsedData.error) {
           logError('Torn REST API error:', parsedData.error);
-          // Schedule next attempt even if there was an error
-          updateTimer = setTimeout(() => fetchChainData(callback), RATE_LIMITS.CHAIN);
+          // Schedule next fallback attempt
+          fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
           return;
         }
         
-        // Format data consistently
+        // Format data to match WebSocket format
         const formattedData = { 
           chain: parsedData.chain || {},
           faction: parsedData.faction || { ID: parsedData.ID },
@@ -113,18 +195,7 @@ function fetchChainData(callback) {
           source: 'http'
         };
         
-        // Make the data available in the API service for the connection command
-        if (!global.apiConnectionData) {
-          global.apiConnectionData = {};
-        }
-        global.apiConnectionData.lastData = formattedData;
-        global.apiConnectionData.lastSuccessfulRequest = Date.now();
-        global.apiConnectionData.requestStats = {
-          ...lastRequestTime,
-          totalRequests: (global.apiConnectionData.requestStats?.totalRequests || 0) + 1
-        };
-        
-        // Process with callback (for main bot functionality)
+        // Process the data
         callback(formattedData);
         
         // Also process chain data with the chain monitor if available
@@ -141,74 +212,23 @@ function fetchChainData(callback) {
           }
         }
         
-        // Schedule next update - potentially use a dynamic interval based on chain status
-        // If chain is active, we might want more frequent updates
-        let nextInterval = RATE_LIMITS.CHAIN;
-        
-        // If chain is active (has current data), poll more frequently
-        if (formattedData.chain && formattedData.chain.current > 0) {
-          // Use a shorter interval for active chains but not less than 15 seconds
-          nextInterval = Math.max(15000, RATE_LIMITS.CHAIN / 2);
-          log('Chain is active - using shorter polling interval');
-        }
-        
-        updateTimer = setTimeout(() => fetchChainData(callback), nextInterval);
+        // Schedule next fallback update
+        fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
       } catch (err) {
         logError('Error parsing REST API response:', err);
-        // Schedule next attempt even if there was an error
-        updateTimer = setTimeout(() => fetchChainData(callback), RATE_LIMITS.CHAIN);
+        // Schedule next fallback attempt
+        fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
       }
     });
-  });
-  
-  // Additional timeout handling
-  req.setTimeout(10000, () => {
-    req.abort();
-    logError('REST API request timed out after 10 seconds');
-    // Schedule retry
-    updateTimer = setTimeout(() => fetchChainData(callback), RATE_LIMITS.CHAIN);
   });
   
   req.on('error', error => {
     logError('REST API request error:', error);
     // Schedule retry
-    updateTimer = setTimeout(() => fetchChainData(callback), RATE_LIMITS.CHAIN);
+    fallbackTimer = setTimeout(() => fetchChainDataFallback(callback), FALLBACK_INTERVAL);
   });
   
   req.end();
-}
-
-/**
- * Start health check to monitor API connectivity
- * @param {Function} callback - Function to call when data is received
- */
-function startHealthCheck(callback) {
-  if (healthCheckTimer) {
-    clearInterval(healthCheckTimer);
-  }
-  
-  log('Starting API connection health check service');
-  
-  healthCheckTimer = setInterval(() => {
-    // Check if we have recent data
-    const now = Date.now();
-    const lastSuccessful = global.apiConnectionData?.lastSuccessfulRequest || 0;
-    
-    // If it's been over 2 minutes since our last successful request, force a fetch
-    if (now - lastSuccessful > 120000) {
-      log('Health check: No recent data, forcing API update');
-      
-      // Force immediate update
-      if (updateTimer) {
-        clearTimeout(updateTimer);
-        updateTimer = null;
-      }
-      
-      // Reset request tracking to force immediate fetch
-      lastRequestTime.chain = 0;
-      fetchChainData(callback || globalCallback);
-    }
-  }, 60000); // Check every minute
 }
 
 /**
@@ -220,33 +240,10 @@ function startHealthCheck(callback) {
  */
 function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_KEY) {
   return new Promise((resolve, reject) => {
-    // Implement rate limiting
-    const now = Date.now();
-    const timeSinceLastRequest = now - (lastRequestTime[endpoint] || 0);
-    const rateLimit = RATE_LIMITS[endpoint.toUpperCase()] || RATE_LIMITS.DEFAULT;
-    
-    if (timeSinceLastRequest < rateLimit) {
-      // If we've fetched too recently, delay the request
-      const delay = rateLimit - timeSinceLastRequest;
-      log(`Rate limiting ${endpoint} request. Delaying by ${delay}ms`);
-      
-      setTimeout(() => {
-        getAdditionalData(endpoint, selections, apiKey)
-          .then(resolve)
-          .catch(reject);
-      }, delay);
-      return;
-    }
-    
-    // Update last request time
-    lastRequestTime[endpoint] = now;
-    
-    // Build request options
     const options = {
       hostname: 'api.torn.com',
       path: `/${endpoint}/?selections=${selections}&key=${apiKey}`,
-      method: 'GET',
-      timeout: 10000 // 10 second timeout
+      method: 'GET'
     };
     
     const req = https.request(options, res => {
@@ -265,20 +262,6 @@ function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_K
             return;
           }
           
-          // Add metadata
-          parsedData.lastUpdate = Date.now();
-          parsedData.source = 'http';
-          
-          // Update global stats
-          if (!global.apiConnectionData) {
-            global.apiConnectionData = {};
-          }
-          if (!global.apiConnectionData.requestStats) {
-            global.apiConnectionData.requestStats = {};
-          }
-          global.apiConnectionData.requestStats.totalRequests = 
-            (global.apiConnectionData.requestStats.totalRequests || 0) + 1;
-          
           resolve(parsedData);
         } catch (error) {
           reject(error);
@@ -295,31 +278,40 @@ function getAdditionalData(endpoint, selections, apiKey = process.env.TORN_API_K
 }
 
 /**
- * Manually reconnect the API services
+ * Manually reconnect the WebSocket
  * @param {Function} callback - Function to call when data is received
  */
 function reconnectTornWS(callback) {
-  log('Manually reconnecting to Torn API services...');
+  log('Manually reconnecting to Torn API WebSocket...');
   
   // Clean up existing resources
-  if (updateTimer) {
-    clearTimeout(updateTimer);
-    updateTimer = null;
+  if (ws) {
+    try {
+      ws.terminate();
+    } catch (error) {
+      // Silently continue
+    }
+    ws = null;
   }
   
-  if (healthCheckTimer) {
-    clearInterval(healthCheckTimer);
-    healthCheckTimer = null;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
   
-  // Reset request tracking to force immediate fetch
-  lastRequestTime = {};
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
+  }
   
-  // Start fresh polling
-  fetchChainData(callback || globalCallback);
+  // Reset reconnect attempts
+  reconnectAttempts = 0;
   
-  // Restart health check
-  startHealthCheck(callback || globalCallback);
+  // Start fresh
+  connectWebSocket(callback);
+  
+  // Also start fallback timer for reliability
+  fetchChainDataFallback(callback);
 }
 
 /**
@@ -330,39 +322,38 @@ function resetAllConnections(callback) {
   log('Performing full reset of all Torn API connections...');
   
   // Clean up existing resources
-  if (updateTimer) {
-    clearTimeout(updateTimer);
-    updateTimer = null;
+  if (ws) {
+    try {
+      ws.terminate();
+    } catch (error) {
+      // Silently continue
+    }
+    ws = null;
   }
   
-  if (healthCheckTimer) {
-    clearInterval(healthCheckTimer);
-    healthCheckTimer = null;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
   
-  // Reset all state
-  lastRequestTime = {};
-  
-  // If global connection stats exist, reset most values but keep totals
-  if (global.apiConnectionData) {
-    const totalRequests = global.apiConnectionData.requestStats?.totalRequests || 0;
-    global.apiConnectionData = {
-      requestStats: {
-        totalRequests,
-        resetCount: (global.apiConnectionData.requestStats?.resetCount || 0) + 1
-      }
-    };
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
   }
   
-  // Start fresh polling
-  fetchChainData(callback || globalCallback);
+  // Reset reconnect attempts
+  reconnectAttempts = 0;
   
-  // Restart health check
-  startHealthCheck(callback || globalCallback);
+  // Start fresh
+  connectWebSocket(callback);
+  
+  // Also start fallback timer for reliability
+  fetchChainDataFallback(callback);
 }
 
 module.exports = {
   startTornWS,
   reconnectTornWS,
-  resetAllConnections
+  resetAllConnections,
+  getAdditionalData
 };
