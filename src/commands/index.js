@@ -130,22 +130,22 @@ const commands = [
   helpCommand
 ];
 
-// Add new commands if available
-if (factionCommand) commands.push(factionCommand);
-if (attacksCommand) commands.push(attacksCommand);
-if (bankCommand) commands.push(bankCommand);
-if (eventsCommand) commands.push(eventsCommand);
-if (chainsheetCommand) commands.push(chainsheetCommand);
-if (welcomeCommand) commands.push(welcomeCommand);
-if (factionstatsCommand) commands.push(factionstatsCommand);
-if (warcountdownCommand) commands.push(warcountdownCommand);
-if (warstrategyCommand) commands.push(warstrategyCommand);
-if (botpermissionsCommand) commands.push(botpermissionsCommand);
-if (spyCommand) commands.push(spyCommand);
-if (targetfinderCommand) commands.push(targetfinderCommand);
-if (giveawayCommand) commands.push(giveawayCommand);
-if (activitymapCommand) commands.push(activitymapCommand);
-if (warpayCommand) commands.push(warpayCommand);
+// Add new commands if available - with additional validation
+if (factionCommand && factionCommand.data) commands.push(factionCommand);
+if (attacksCommand && attacksCommand.data) commands.push(attacksCommand);
+if (bankCommand && bankCommand.data) commands.push(bankCommand);
+if (eventsCommand && eventsCommand.data) commands.push(eventsCommand);
+if (chainsheetCommand && chainsheetCommand.data) commands.push(chainsheetCommand);
+if (welcomeCommand && welcomeCommand.data) commands.push(welcomeCommand);
+if (factionstatsCommand && factionstatsCommand.data) commands.push(factionstatsCommand);
+if (warcountdownCommand && warcountdownCommand.data) commands.push(warcountdownCommand);
+if (warstrategyCommand && warstrategyCommand.data) commands.push(warstrategyCommand);
+if (botpermissionsCommand && botpermissionsCommand.data) commands.push(botpermissionsCommand);
+if (spyCommand && spyCommand.data) commands.push(spyCommand);
+if (targetfinderCommand && targetfinderCommand.data) commands.push(targetfinderCommand);
+if (giveawayCommand && giveawayCommand.data) commands.push(giveawayCommand);
+if (activitymapCommand && activitymapCommand.data) commands.push(activitymapCommand);
+if (warpayCommand && warpayCommand.data) commands.push(warpayCommand);
 
 /**
  * Registers all slash commands with Discord API
