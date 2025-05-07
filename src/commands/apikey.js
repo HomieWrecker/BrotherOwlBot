@@ -261,7 +261,8 @@ const apikeyCommand = {
             '1. Log in to [TornStats](https://tornstats.com)\n' +
             '2. Go to your Settings\n' +
             '3. Find the "API Key" section\n' +
-            '4. Copy your key or generate a new one\n\n' +
+            '4. Copy your key or generate a new one\n' +
+            '5. Make sure your key starts with "TS_" (the bot will add this prefix if missing)\n\n' +
             '**All keys are kept private** and are only used to fetch your data when you request it.'
           )
           .setFooter({ text: 'Never share your API keys with people you don\'t trust' });
@@ -436,16 +437,44 @@ const apikeyCommand = {
       log(`User ${interaction.user.tag} set their YATA API key`);
     }
     else if (interaction.customId === 'apikey_tornstats_modal') {
-      const tornstatsKey = interaction.fields.getTextInputValue('tornstats_key_input');
+      let tornstatsKey = interaction.fields.getTextInputValue('tornstats_key_input');
       
       // Ensure user has a storage object
       if (!userKeys[userId]) {
         userKeys[userId] = {};
       }
       
+      // Ensure the API key format is correct (add TS_ prefix if needed)
+      if (tornstatsKey && !tornstatsKey.startsWith('TS_')) {
+        tornstatsKey = `TS_${tornstatsKey}`;
+        log(`Added TS_ prefix to TornStats API key for user ${interaction.user.tag}`);
+      }
+      
       // Store the key
       userKeys[userId].tornstats = tornstatsKey;
       fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+      
+      // Test if the key works with a simple request
+      let keyValid = false;
+      try {
+        // First try to validate the key
+        const testUrl = `https://www.tornstats.com/api/v1/${tornstatsKey}`;
+        const response = await fetch(testUrl, {
+          headers: {
+            'User-Agent': 'BrotherOwlManager/1.0',
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.status === 200) {
+          keyValid = true;
+          log(`Validated TornStats API key for user ${interaction.user.tag}`);
+        } else {
+          log(`TornStats API validation failed for user ${interaction.user.tag}: Status ${response.status}`);
+        }
+      } catch (error) {
+        logError(`Error validating TornStats API key for user ${interaction.user.tag}:`, error);
+      }
       
       // If the user also has a Torn API key, update battle stats using TornStats data if available
       if (battleStatsTracker && userKeys[userId].torn) {
@@ -485,12 +514,19 @@ const apikeyCommand = {
         }
       }
       
-      await interaction.reply({
-        content: '✅ Your TornStats API key has been successfully saved!',
-        ephemeral: true
-      });
+      if (keyValid) {
+        await interaction.reply({
+          content: '✅ Your TornStats API key has been successfully saved and validated!',
+          ephemeral: true
+        });
+      } else {
+        await interaction.reply({
+          content: '⚠️ Your TornStats API key has been saved, but could not be validated. If you experience issues, please check the format of your key. TornStats keys should start with "TS_".',
+          ephemeral: true
+        });
+      }
       
-      log(`User ${interaction.user.tag} set their TornStats API key`);
+      log(`User ${interaction.user.tag} set their TornStats API key (valid: ${keyValid})`);
     }
   }
 };
