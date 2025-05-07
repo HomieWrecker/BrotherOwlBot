@@ -105,7 +105,9 @@ function connectWebSocket(apiKey) {
   log('Connecting to Torn API WebSocket...');
   
   try {
-    ws = new WebSocket('wss://api.torn.com/wss/');
+    // Torn API uses a specific format for WebSocket connections
+    // The correct format includes the API key in the URL path
+    ws = new WebSocket(`wss://api.torn.com/wss/?key=${apiKey}`);
     
     // Connection opened
     ws.on('open', () => {

@@ -114,16 +114,21 @@ module.exports = {
 async function handleStatusSubcommand(interaction, client) {
   await interaction.deferReply();
   
-  // Get connection status from client data
-  const apiService = client.tornData?.apiService;
+  // Get connection status from global data
   let connectionStatus = null;
   
   try {
-    if (apiService) {
-      connectionStatus = apiService.getConnectionStatus();
+    // Get status from global connection data
+    if (global.apiConnectionData) {
+      connectionStatus = {
+        http: {
+          lastSuccessfulRequest: global.apiConnectionData.lastSuccessfulRequest || 0,
+          requestStats: global.apiConnectionData.requestStats || { totalRequests: 0 }
+        }
+      };
     }
   } catch (error) {
-    // If we can't access the service directly, we'll use approximated status
+    // If we can't access the status, we'll use approximated status
     log('Could not get direct connection status from API service');
   }
   
@@ -146,29 +151,53 @@ async function handleStatusSubcommand(interaction, client) {
   
   // Add detailed connection info if available
   if (connectionStatus) {
-    const wsStatus = connectionStatus.websocket.connected ? '🟢 Connected' : '🔴 Disconnected';
-    const reconnectAttempts = connectionStatus.websocket.reconnectAttempts;
-    const subscriptions = connectionStatus.websocket.activeSubscriptions.join(', ') || 'None';
+    // If we have a last successful request timestamp, calculate how long ago it was
+    const lastSuccessTime = connectionStatus.http.lastSuccessfulRequest;
+    let lastSuccessDisplay = 'Never';
+    let connectionStatusText = '🔴 Disconnected';
     
-    statusEmbed.addFields(
-      { name: 'WebSocket Status', value: wsStatus, inline: true },
-      { name: 'Reconnect Attempts', value: reconnectAttempts.toString(), inline: true },
-      { name: 'Active Subscriptions', value: subscriptions, inline: false }
-    );
-    
-    // Add HTTP info
-    statusEmbed.addFields(
-      { name: 'HTTP Pending Requests', value: connectionStatus.http.pendingRequests.toString(), inline: true }
-    );
-    
-    // Add last request times if available
-    const lastRequests = Object.entries(connectionStatus.http.lastRequests)
-      .map(([endpoint, time]) => `${endpoint}: ${new Date(time).toISOString()}`)
-      .join('\n') || 'No recent requests';
+    if (lastSuccessTime > 0) {
+      const now = Date.now();
+      const secondsAgo = Math.floor((now - lastSuccessTime) / 1000);
       
+      if (secondsAgo < 60) {
+        lastSuccessDisplay = `${secondsAgo} seconds ago`;
+        connectionStatusText = '🟢 Connected';
+      } else if (secondsAgo < 3600) {
+        const minutes = Math.floor(secondsAgo / 60);
+        lastSuccessDisplay = `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+        connectionStatusText = secondsAgo < 120 ? '🟢 Connected' : '🟡 Degraded';
+      } else {
+        const hours = Math.floor(secondsAgo / 3600);
+        lastSuccessDisplay = `${hours} hour${hours === 1 ? '' : 's'} ago`;
+        connectionStatusText = '🔴 Disconnected';
+      }
+    }
+    
+    // Add API connection status
     statusEmbed.addFields(
-      { name: 'Recent HTTP Requests', value: lastRequests, inline: false }
+      { name: 'Connection Status', value: connectionStatusText, inline: true },
+      { name: 'Last Successful Request', value: lastSuccessDisplay, inline: true }
     );
+    
+    // Add HTTP info if stats are available
+    if (connectionStatus.http.requestStats) {
+      const totalRequests = connectionStatus.http.requestStats.totalRequests || 0;
+      const resetCount = connectionStatus.http.requestStats.resetCount || 0;
+      
+      statusEmbed.addFields(
+        { name: 'Total API Requests', value: totalRequests.toString(), inline: true },
+        { name: 'Connection Resets', value: resetCount.toString(), inline: true }
+      );
+      
+      // If we have detailed endpoint timings, show them
+      if (connectionStatus.http.requestStats.chain) {
+        const lastChainRequestTime = new Date(connectionStatus.http.requestStats.chain).toISOString();
+        statusEmbed.addFields(
+          { name: 'Last Chain API Request', value: lastChainRequestTime, inline: false }
+        );
+      }
+    }
   } else {
     // Fallback status display
     const chainData = client.tornData?.chain ? 'Available' : 'Not available';
@@ -183,7 +212,7 @@ async function handleStatusSubcommand(interaction, client) {
     .addComponents(
       new ButtonBuilder()
         .setCustomId('reconnect_api')
-        .setLabel('Reconnect WebSocket')
+        .setLabel('Reconnect API')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('reset_api')

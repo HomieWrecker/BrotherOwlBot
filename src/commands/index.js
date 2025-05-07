@@ -130,6 +130,14 @@ try {
   logError('Error loading battle stats command:', error);
 }
 
+try {
+  apiconnectionCommand = require('./apiconnection');
+  log('Loaded API connection command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading API connection command:', error);
+}
+
 // Collection of commands to register
 const commands = [
   statusCommand,
@@ -155,6 +163,7 @@ if (giveawayCommand) commands.push(giveawayCommand);
 if (activitymapCommand) commands.push(activitymapCommand);
 if (warpayCommand) commands.push(warpayCommand);
 if (battlestatsCommand) commands.push(battlestatsCommand);
+if (apiconnectionCommand) commands.push(apiconnectionCommand);
 
 /**
  * Registers all slash commands with Discord API
