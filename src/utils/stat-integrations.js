@@ -110,7 +110,30 @@ async function fetchFromYATA(playerId, apiKey = null) {
     const response = await makeRequest(options);
     
     if (response.statusCode !== 200 || response.error) {
-      logError(`YATA API error for player ${playerId}: ${response.error || 'Unknown error'}`);
+      log(`YATA API error for player ${playerId}: ${response.error || 'Unknown error'}`);
+      
+      // Try public source estimation as a fallback
+      log(`Attempting to use public source estimation for player ${playerId}`);
+      try {
+        const statEstimator = require('./stat-estimator');
+        const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
+        
+        if (estimatedStats && estimatedStats.battleStats) {
+          log(`Successfully estimated stats for player ${playerId} from public sources`);
+          return {
+            battleStats: estimatedStats.battleStats,
+            playerProfile: {
+              level: estimatedStats.level || 0,
+              age: estimatedStats.age || 0,
+              timestamp: Date.now()
+            },
+            source: 'Public Source Estimation'
+          };
+        }
+      } catch (estimationError) {
+        logError(`Error estimating stats from public sources: ${estimationError.message}`);
+      }
+      
       return null;
     }
     
@@ -321,24 +344,80 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       return statsResponse.data;
     }
     
-    // If all attempts fail, provide mock data for testing purposes
-    // This data is meant only for testing the data flow and will be removed before production
-    log(`Generating fallback data for TornStats integration test purposes only`);
-    
-    // For testing only - this will help ensure the command logic works even if the API is unavailable
-    if (process.env.NODE_ENV === 'development') {
-      return {
-        spy: {
-          name: `Player ${playerId}`,
-          level: 50,
-          strength: 100000,
-          defense: 100000,
-          speed: 100000,
-          dexterity: 100000,
-          update_time: new Date().toISOString(),
-          _test_data_notice: "This is test data used during development. Will not appear in production."
+    // Attempt to fall back to direct login page with cookie
+    log(`Trying to access TornStats with login cookie for player ${playerId}`);
+    try {
+      const loginResponse = await makeRequest({
+        hostname: 'www.tornstats.com',
+        path: `/login.php`,
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Cookie': `api=${apiKey}`  // Try API key as cookie
         }
-      };
+      }, null, true);
+      
+      // If login page worked, try to get player data again using established cookies
+      if (loginResponse.statusCode === 200 || loginResponse.statusCode === 302) {
+        const cookies = loginResponse.headers?.['set-cookie'];
+        let cookieHeader = `api=${apiKey}`;
+        
+        if (cookies) {
+          cookieHeader = cookies.join('; ');
+        }
+        
+        htmlResponse = await makeRequest({
+          hostname: 'www.tornstats.com',
+          path: `/spy.php?id=${playerId}`,
+          method: 'GET',
+          headers: {
+            'Accept': 'text/html',
+            'User-Agent': 'BrotherOwlDiscordBot/1.0',
+            'Cookie': cookieHeader
+          }
+        }, null, true);
+        
+        if (htmlResponse.statusCode === 200 && htmlResponse.rawHtml) {
+          log(`Successfully fetched player data after login for ${playerId}`);
+          
+          // Try to extract battle stats from HTML
+          const statsData = extractStatsFromTornStatsHtml(htmlResponse.rawHtml, playerId);
+          if (statsData) {
+            log(`Successfully extracted stats from TornStats HTML after login for player ${playerId}`);
+            return statsData;
+          }
+        }
+      }
+    } catch (error) {
+      log(`Error trying login fallback: ${error.message}`);
+    }
+    
+    // Final attempt - full authentication flow
+    log(`All direct methods failed, we need user authentication for TornStats`);
+    
+    // For development testing ONLY - never used in production
+    if (process.env.NODE_ENV === 'development') {
+      log(`Development mode - using public source estimation instead of mock data`);
+      
+      // In development, we use the estimator instead of mock data
+      const statEstimator = require('./stat-estimator');
+      const estimatedStats = await statEstimator.estimateStatsFromPublicSources(playerId);
+      
+      if (estimatedStats && estimatedStats.battleStats) {
+        return {
+          spy: {
+            name: estimatedStats.playerName || `Player ${playerId}`,
+            level: estimatedStats.level || 1,
+            strength: estimatedStats.battleStats.strength || 0,
+            defense: estimatedStats.battleStats.defense || 0,
+            speed: estimatedStats.battleStats.speed || 0,
+            dexterity: estimatedStats.battleStats.dexterity || 0,
+            update_time: new Date().toISOString(),
+            source: 'Public Source Estimation (TornStats unavailable)'
+          }
+        };
+      }
     }
     
     logError(`Could not fetch spy or stats data from TornStats for player ${playerId}`);
