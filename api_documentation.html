@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" >
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="description" content="Torn Stats is a comprehensive site full of useful tools and calculators to enhance your Torn gameplay. Keep track of your spy logs, war hit counts, company details over time, and so much more!" />
+
+    <!-- CSRF Token -->
+    <meta name="csrf-token" content="ClJkvsFQo7XVZbxcvVG5DgEjbEPB5kJFqM1qGBwk">
+
+    <title>Torn Stats - API Documentation</title>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-29214087-2"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-29214087-2');
+    </script>
+
+    <!--<script src="https://code.jquery.com/jquery.js"></script>-->
+    <script src="https://www.tornstats.com/js/jquery-3.7.1.min.js"></script>
+
+    <!-- Bootstrap -->
+    <link href="https://www.tornstats.com/vendor/bootstrap-5.3.5/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://www.tornstats.com/vendor/bootstrap-5.3.5/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Fontawesome -->
+    <script src="https://www.tornstats.com/js/fontawesome_5.15.4.min.js" crossorigin="anonymous"></script>
+    <!--<script src="https://kit.fontawesome.com/6c47f9ad64.js" crossorigin="anonymous"></script>-->
+    <!--<script defer src="https://www.tornstats.com/fontawesome-6.0.0/js/all.js"></script>-->
+    <!--<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">-->
+    <link rel="stylesheet" href="https://www.tornstats.com/fontawesome-6.0.0/css/all.css">
+
+    <!-- Datatables -->
+    <link rel="stylesheet" href="https://www.tornstats.com/vendor/datatables/datatables.min.css">
+    <script src="https://www.tornstats.com/vendor/datatables/datatables.min.js"></script>
+
+    <!-- Custom Overrides -->
+    <link rel="stylesheet" href="https://www.tornstats.com/css/external.css">
+
+
+    <!-- Fav and touch icons -->
+    <link rel="shortcut icon" href="https://www.tornstats.com/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://www.tornstats.com/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://www.tornstats.com/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://www.tornstats.com/favicon-16x16.png">
+    <link rel="manifest" href="https://www.tornstats.com/site.webmanifest">
+
+</head>
+<body>
+    <div>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark" data-bs-theme="dark">
+    <div class="container">
+        <a class="navbar-brand" href="https://www.tornstats.com"><img src="https://www.tornstats.com/images/logos/tornstats_logo.svg"
+                                                           alt="Torn Stats" width="150px;"></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.tornstats.com/faq">FAQ</a>
+                    </li>
+                                <li class="nav-item">
+                    <a class="nav-link " href="https://www.tornstats.com/tornipedia">Tornipedia</a>
+                </li>
+                <li class="nav-item ">
+                    <a class="nav-link" href="https://www.tornstats.com/loot">NPC Loot</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        References
+                    </a>
+                    <ul class="dropdown-menu">
+                                                                                                                        <li><a class="dropdown-item" href="https://www.tornstats.com/halloween">Trick or Treat</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/backdrops">Backdrops</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/bank">Bank Rates</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/shops">City Shops</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/companies">Companies</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/elo">Elo Breakdown</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/guides">Guides</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/halloffame">Hall of Fame</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/honors">Honors List</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/items">Item List</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/merits">Merit Simulator</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/graphs">Player Graphs</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/proxiquality">ProxiQuality Simulator</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/rackets">Rackets</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/ranked/members">Ranked Member
+                                Participation</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/wars">Ranked Wars</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/respect">Respect Simulator</a></li>
+                            
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/topfactions">Top Factions</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/travel">Travel Profits</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/contributions">Contributions</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/updates">Recent Updates</a></li>
+                        <li><a class="dropdown-item" href="https://www.tornstats.com/api">Torn Stats API</a></li>
+                    </ul>
+                </li>
+                                                                                                                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.tornstats.com/about">About Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://www.tornstats.com/issues">Report an Issue</a>
+                    </li>
+                            </ul>
+        </div>
+    </div>
+</nav>
+        <div class="container pt-5">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card border-dark">
+                                                    <div class="card-header text-center text-white bg-dark"><h4>Torn Stats API Documentation</h4></div>
+                                                <div class="card-body table-responsive">
+                                                                                                                    <nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link " id="nav-v1-tab" data-bs-toggle="tab" data-bs-target="#nav-v1" type="button" role="tab" aria-controls="nav-v1" aria-selected="true">Version 1</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link  active " id="nav-v2-tab" data-bs-toggle="tab" data-bs-target="#nav-v2" type="button" role="tab" aria-controls="nav-v2" aria-selected="false">Version 2</button>
+        </li>
+    </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade  mt-2" id="nav-v1" role="tabpanel" aria-labelledby="nav-v1-tab">
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#main_example" role="button" aria-expanded="false" aria-controls="main_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="main_example">
+                <div class="card-body">
+                    Polls the Torn API with the key and checks to see if there's a matching account with the Torn ID on Torn Stats. This will update the User's API key with the one matching the request if the key is valid.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;User already exists. No action necessary.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/loot
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#loot_example" role="button" aria-expanded="false" aria-controls="loot_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="loot_example">
+                <div class="card-body">
+                    Displays the NPC loot times.
+        <pre>
+        {
+    &quot;4&quot;: {
+        &quot;name&quot;: &quot;DUKE&quot;,
+        &quot;torn_id&quot;: 4,
+        &quot;status&quot;: &quot;Hospital&quot;,
+        &quot;hosp_out&quot;: 1616198996,
+        &quot;loot_2&quot;: 1616200796,
+        &quot;loot_3&quot;: 1616204396,
+        &quot;loot_4&quot;: 1616211596,
+        &quot;loot_5&quot;: 1616225996,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;15&quot;: {
+        &quot;name&quot;: &quot;Leslie&quot;,
+        &quot;torn_id&quot;: 15,
+        &quot;status&quot;: &quot;Hospital&quot;,
+        &quot;hosp_out&quot;: 1616202508,
+        &quot;loot_2&quot;: 1616204308,
+        &quot;loot_3&quot;: 1616207908,
+        &quot;loot_4&quot;: 1616215108,
+        &quot;loot_5&quot;: 1616229508,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;19&quot;: {
+        &quot;name&quot;: &quot;Jimmy&quot;,
+        &quot;torn_id&quot;: 19,
+        &quot;status&quot;: &quot;Okay&quot;,
+        &quot;hosp_out&quot;: 1616195003,
+        &quot;loot_2&quot;: 1616196803,
+        &quot;loot_3&quot;: 1616200403,
+        &quot;loot_4&quot;: 1616207603,
+        &quot;loot_5&quot;: 1616222003,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;20&quot;: {
+        &quot;name&quot;: &quot;Fernando&quot;,
+        &quot;torn_id&quot;: 20,
+        &quot;status&quot;: &quot;Okay&quot;,
+        &quot;hosp_out&quot;: 1616195488,
+        &quot;loot_2&quot;: 1616197288,
+        &quot;loot_3&quot;: 1616200888,
+        &quot;loot_4&quot;: 1616208088,
+        &quot;loot_5&quot;: 1616222488,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;NPCs found.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/faction/crimes
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#faction_crime_details_example" role="button" aria-expanded="false" aria-controls="faction_crime_details_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="faction_crime_details_example">
+                <div class="card-body">
+                    Displays relevant OC details about faction members.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Member crime stats found.&quot;,
+    &quot;members&quot;: {
+        &quot;776&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 9,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 1
+        },
+        &quot;1990&quot;: {
+            &quot;natural_nerve&quot;: 55,
+            &quot;crime_success&quot;: 0,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 0
+        },
+        &quot;456123&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 0,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 0,
+            &quot;verified&quot;: 1
+        },
+        &quot;123456&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 10,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 1
+        }
+    }
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/faction/roster
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#faction_roster_example" role="button" aria-expanded="false" aria-controls="faction_roster_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="faction_roster_example">
+                <div class="card-body">
+                    Display roster details about your faction.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Member details found.&quot;,
+    &quot;members&quot;: {
+        &quot;776&quot;: {
+            &quot;name&quot;: &quot;IceBlueFire&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+        &quot;790&quot;: {
+            &quot;name&quot;: &quot;Shapeshifter&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+        &quot;2926&quot;: {
+            &quot;name&quot;: &quot;Icy&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+    }
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/events
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#events_example" role="button" aria-expanded="false" aria-controls="events_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="events_example">
+                <div class="card-body">
+                    Displays your latest events on Torn Stats.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;events&quot;: [
+        {
+            &quot;timestamp&quot;: 1613153932,
+            &quot;event&quot;: &quot;IceBlueFire [776] has requested you take 1 member from JFK.&quot;,
+            &quot;seen&quot;: 1
+        },
+        {
+            &quot;timestamp&quot;: 1613153901,
+            &quot;event&quot;: &quot;IceBlueFire [776] has requested you take 2 members from JFK.&quot;,
+            &quot;seen&quot;: 1
+        }
+    ]
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/battlestats/record
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#battle_stats_example" role="button" aria-expanded="false" aria-controls="battle_stats_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="battle_stats_example">
+                <div class="card-body">
+                    Updates player's battle stats and returns the gain since last update.
+        <pre>
+        {
+    &quot;age&quot;: &quot;3 minutes ago&quot;,
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Updated stats for 776&quot;,
+    &quot;deltaStrength&quot;: 0,
+    &quot;deltaDefense&quot;: 0,
+    &quot;deltaDexterity&quot;: 0,
+    &quot;deltaSpeed&quot;: 0
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/hof/[1/0]
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#share_hof_example" role="button" aria-expanded="false" aria-controls="share_hof_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="share_hof_example">
+                <div class="card-body">
+                    Updates the player's preference of participating in sharing their battle stats anonymously.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;You have turned sharing on! Thank you for participating anonymously.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/settings&amp;comparespy=[1/0]&amp;comparepersonal=[1/0]&amp;personalstats=xantaken,attackswon,refills,statenhancersused
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#settings_example" role="button" aria-expanded="false" aria-controls="settings_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="settings_example">
+                <div class="card-body">
+                    Updates the player's preferences for comparing details on profiles.<br>
+<em>spy</em> decides whether to display spy details or not.<br>
+<em>comparespy</em> decides whether to display the stat differences in spies.<br>
+<em>comparepersonal</em> decides whether to display personal stats or not.<br>
+<em>personalstats</em> is a comma separated string of API-friendly references to personal stats. The order in which they're entered in the string is the order in which they'll appear on profiles.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Your settings have been updated!&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/spy/{target}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#view_spy_example" role="button" aria-expanded="false" aria-controls="view_spy_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="view_spy_example">
+                <div class="card-body">
+                    Loads profile details about the target. Accepts the Torn ID or the Torn Name as the <em>target</em>.
+        <pre>
+        {
+    &quot;compare&quot;: {
+        &quot;status&quot;: true,
+        &quot;data&quot;: {
+            &quot;Xanax Taken&quot;: {
+                &quot;amount&quot;: 1245,
+                &quot;difference&quot;: 0
+            },
+            &quot;Refills&quot;: {
+                &quot;amount&quot;: 164,
+                &quot;difference&quot;: 0
+            },
+            &quot;Stat Enhancers Used&quot;: {
+                &quot;amount&quot;: 1,
+                &quot;difference&quot;: 0
+            },
+            &quot;Merits Bought&quot;: {
+                &quot;amount&quot;: 10,
+                &quot;difference&quot;: 0
+            },
+            &quot;Attacks Won&quot;: {
+                &quot;amount&quot;: 1654,
+                &quot;difference&quot;: 0
+            },
+            &quot;Defends Won&quot;: {
+                &quot;amount&quot;: 45,
+                &quot;difference&quot;: 0
+            },
+            &quot;Networth&quot;: {
+                &quot;amount&quot;: 100000000,
+                &quot;difference&quot;: 0
+            }
+        },
+        &quot;timestamp&quot;: &quot;1533752540&quot;,
+        &quot;spy&quot;: {
+            &quot;type&quot;: &quot;faction-share&quot;,
+            &quot;status&quot;: true,
+            &quot;message&quot;: &quot;Shared stats found.&quot;,
+            &quot;target_score&quot;: 30.251259169,
+            &quot;your_score&quot;: 30.251259169,
+            &quot;fair_fight_bonus&quot;: 3,
+            &quot;difference&quot;: &quot;18 hours ago&quot;,
+            &quot;strength&quot;: 100,
+            &quot;deltaStrength&quot;: 0,
+            &quot;defense&quot;: 100,
+            &quot;deltaDefense&quot;: 0,
+            &quot;speed&quot;: 100,
+            &quot;deltaSpeed&quot;: 0,
+            &quot;dexterity&quot;: 100,
+            &quot;deltaDexterity&quot;: 0,
+            &quot;total&quot;: 400,
+            &quot;deltaTotal&quot;: 0
+        },
+        &quot;attacks&quot;: {
+            &quot;status&quot;: false,
+            &quot;message&quot;: &quot;No recent attacks made against this player.&quot;
+        }
+    }
+}
+        </pre>
+                    <em>type</em> will indicate whether it was a <em>faction-spy, personal-spy, or faction-share</em> (indicating they're in the faction)
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v1/{key}/battlestats/graph
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#battle_stats_graph_example" role="button" aria-expanded="false" aria-controls="battle_stats_graph_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="battle_stats_graph_example">
+                <div class="card-body">
+                    Gets up to 3 months worth of stat data to build a graph out of.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Stats found.&quot;,
+    &quot;share_hof&quot;: &quot;1&quot;,
+    &quot;data&quot;: [
+        {
+            &quot;strength&quot;: 100,
+            &quot;defense&quot;: 100,
+            &quot;speed&quot;: 100,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1525910400,
+            &quot;total&quot;: 400
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 100,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1525996800,
+            &quot;total&quot;: 460
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1526083200,
+            &quot;total&quot;: 520
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 1000,
+            &quot;timestamp&quot;: 1526169600,
+            &quot;total&quot;: 1390
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 1000,
+            &quot;timestamp&quot;: 1526256000,
+            &quot;total&quot;: 1390
+        }
+    ]
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [POST] https://www.tornstats.com/api/v1/{key}/store/spy
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#record_spy_example" role="button" aria-expanded="false" aria-controls="record_spy_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="record_spy_example">
+                <div class="card-body">
+                    Post must include the following parameters: 'player_id', 'player_name', 'player_level'
+The other optional parameters are: 'strength', 'defense', 'speed', 'dexterity', 'total', 'player_faction'
+To enter faction spies, the user must have the faction permission (API Save Spies) or be a Faction Assistant or above.
+        <pre>
+        {
+    &quot;faction_entered&quot;: true,
+    &quot;personal_entered&quot;: true,
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Spy has been saved. Stats have been updated for IceBlueFire in JFK&#039;s spies. Stats have been updated for IceBlueFire in JFK 2.1&#039;s spies. Stats have been updated for IceBlueFire in your personal spies.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+            </div>
+    <div class="tab-pane  show active  mt-2" id="nav-v2" role="tabpanel" aria-labelledby="nav-v2-tab">
+        Change Log:
+        <ul>
+            <li>Changed the <strong>spy</strong> end point. The url changed from /{KEY}/spy/{USER_ID} to /{KEY}/spy/user/{USER_ID}</li>
+            <li>Added support to get spies for a full roster at /{KEY}/spy/faction/{FACTION_ID}</li>
+        </ul>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#main_example" role="button" aria-expanded="false" aria-controls="main_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="main_example">
+                <div class="card-body">
+                    Polls the Torn API with the key and checks to see if there's a matching account with the Torn ID on Torn Stats. This will update the User's API key with the one matching the request if the key is valid.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;User already exists. No action necessary.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/loot
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#loot_example" role="button" aria-expanded="false" aria-controls="loot_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="loot_example">
+                <div class="card-body">
+                    Displays the NPC loot times.
+        <pre>
+        {
+    &quot;4&quot;: {
+        &quot;name&quot;: &quot;DUKE&quot;,
+        &quot;torn_id&quot;: 4,
+        &quot;status&quot;: &quot;Hospital&quot;,
+        &quot;hosp_out&quot;: 1616198996,
+        &quot;loot_2&quot;: 1616200796,
+        &quot;loot_3&quot;: 1616204396,
+        &quot;loot_4&quot;: 1616211596,
+        &quot;loot_5&quot;: 1616225996,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;15&quot;: {
+        &quot;name&quot;: &quot;Leslie&quot;,
+        &quot;torn_id&quot;: 15,
+        &quot;status&quot;: &quot;Hospital&quot;,
+        &quot;hosp_out&quot;: 1616202508,
+        &quot;loot_2&quot;: 1616204308,
+        &quot;loot_3&quot;: 1616207908,
+        &quot;loot_4&quot;: 1616215108,
+        &quot;loot_5&quot;: 1616229508,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;19&quot;: {
+        &quot;name&quot;: &quot;Jimmy&quot;,
+        &quot;torn_id&quot;: 19,
+        &quot;status&quot;: &quot;Okay&quot;,
+        &quot;hosp_out&quot;: 1616195003,
+        &quot;loot_2&quot;: 1616196803,
+        &quot;loot_3&quot;: 1616200403,
+        &quot;loot_4&quot;: 1616207603,
+        &quot;loot_5&quot;: 1616222003,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;20&quot;: {
+        &quot;name&quot;: &quot;Fernando&quot;,
+        &quot;torn_id&quot;: 20,
+        &quot;status&quot;: &quot;Okay&quot;,
+        &quot;hosp_out&quot;: 1616195488,
+        &quot;loot_2&quot;: 1616197288,
+        &quot;loot_3&quot;: 1616200888,
+        &quot;loot_4&quot;: 1616208088,
+        &quot;loot_5&quot;: 1616222488,
+        &quot;updated&quot;: 1616229508
+    },
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;NPCs found.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/efficiency{?man=xxx&amp;int=xxx&amp;end=xxx}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#employee_efficiency_example" role="button" aria-expanded="false" aria-controls="employee_efficiency_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="employee_efficiency_example">
+                <div class="card-body">
+                    Displays your employee efficiency at every company position. If man/int/end aren't passed, it'll use the work stats of the key owner.
+        <pre>
+        {
+    &quot;1&quot;: {
+        &quot;company&quot;: &quot;Hair Salon&quot;,
+        &quot;Stylist&quot;: 165,
+        &quot;Colorist&quot;: 161,
+        &quot;Nail Technician&quot;: 165,
+        &quot;Apprentice&quot;: 181,
+        &quot;Shampooist&quot;: 171,
+        &quot;Senior Stylist&quot;: 155,
+        &quot;Receptionist&quot;: 157,
+        &quot;Trainer&quot;: 149,
+        &quot;Aesthetician&quot;: 149
+        },
+    ...
+    &quot;stats&quot;: {
+        &quot;manual_labor&quot;: 100000,
+        &quot;intelligence&quot;: 100000,
+        &quot;endurance&quot;: 300000
+    },
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Retrieving employee efficiency with assumed education completed.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/faction/crimes
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#faction_crime_details_example" role="button" aria-expanded="false" aria-controls="faction_crime_details_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="faction_crime_details_example">
+                <div class="card-body">
+                    Displays relevant OC details about faction members.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Member crime stats found.&quot;,
+    &quot;members&quot;: {
+        &quot;776&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 9,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 1
+        },
+        &quot;1990&quot;: {
+            &quot;natural_nerve&quot;: 55,
+            &quot;crime_success&quot;: 0,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 0
+        },
+        &quot;456123&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 0,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 0,
+            &quot;verified&quot;: 1
+        },
+        &quot;123456&quot;: {
+            &quot;natural_nerve&quot;: 60,
+            &quot;crime_success&quot;: 10,
+            &quot;psych_degree&quot;: 1,
+            &quot;federal_judge&quot;: 1,
+            &quot;verified&quot;: 1
+        }
+    }
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/faction/roster
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#faction_roster_example" role="button" aria-expanded="false" aria-controls="faction_roster_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="faction_roster_example">
+                <div class="card-body">
+                    Display roster details about your faction.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Member details found.&quot;,
+    &quot;members&quot;: {
+        &quot;776&quot;: {
+            &quot;name&quot;: &quot;IceBlueFire&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+        &quot;790&quot;: {
+            &quot;name&quot;: &quot;Shapeshifter&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+        &quot;2926&quot;: {
+            &quot;name&quot;: &quot;Icy&quot;,
+            &quot;total&quot;: 123456,
+            &quot;verified&quot;: 1
+        },
+    }
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/wars/{war_id}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#war_roster_example" role="button" aria-expanded="false" aria-controls="war_roster_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="war_roster_example">
+                <div class="card-body">
+                    Displays spy details for the rosters in a specific war
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;War data found.&quot;,
+    &quot;war&quot;: {
+        &quot;id&quot;: 243,
+        &quot;war_id&quot;: 337,
+        &quot;faction_a_id&quot;: 21041,
+        &quot;faction_a_name&quot;: &quot;URANUS&quot;,
+        &quot;faction_a_score&quot;: 2388,
+        &quot;faction_a_chain&quot;: 0,
+        &quot;faction_b_id&quot;: 37933,
+        &quot;faction_b_name&quot;: &quot;Sell Swords&quot;,
+        &quot;faction_b_score&quot;: 2079,
+        &quot;faction_b_chain&quot;: 0,
+        &quot;start&quot;: 1642784400,
+        &quot;start_at&quot;: &quot;2022-01-21T17:00:00.000000Z&quot;,
+        &quot;end&quot;: 0,
+        &quot;end_at&quot;: &quot;-000001-11-30T00:00:00.000000Z&quot;,
+        &quot;target&quot;: 1110,
+        &quot;winner&quot;: 0,
+        &quot;created_at&quot;: &quot;2022-01-19T09:01:02.000000Z&quot;,
+        &quot;updated_at&quot;: &quot;2022-01-25T14:27:02.000000Z&quot;,
+        &quot;faction_a_reward_respect&quot;: 0,
+        &quot;faction_a_reward_points&quot;: 0,
+        &quot;faction_a_end_rank&quot;: null,
+        &quot;faction_b_reward_respect&quot;: 0,
+        &quot;faction_b_reward_points&quot;: 0,
+        &quot;faction_b_end_rank&quot;: null
+    },
+    &quot;faction_a&quot;: {
+        &quot;ID&quot;: 21041,
+        &quot;name&quot;: &quot;URANUS&quot;,
+        &quot;tag&quot;: &quot;URNS&quot;,
+        &quot;tag_image&quot;: &quot;21041-92649.png&quot;,
+        &quot;leader&quot;: 2425885,
+        &quot;co-leader&quot;: 0,
+        &quot;respect&quot;: 64318,
+        &quot;age&quot;: 3805,
+        &quot;capacity&quot;: 25,
+        &quot;best_chain&quot;: 58,
+        &quot;territory_wars&quot;: [],
+        &quot;raid_wars&quot;: [],
+        &quot;peace&quot;: [],
+        &quot;rank&quot;: {
+            &quot;level&quot;: 1,
+            &quot;name&quot;: &quot;Unranked&quot;,
+            &quot;division&quot;: 0,
+            &quot;position&quot;: 0
+        },
+        &quot;members&quot;: {
+            ...
+        }
+    },
+    &quot;faction_b&quot;: {
+        &quot;ID&quot;: 37933,
+        &quot;name&quot;: &quot;Sell Swords&quot;,
+        &quot;tag&quot;: &quot;S/S&quot;,
+        &quot;tag_image&quot;: &quot;37933-32820.png&quot;,
+        &quot;leader&quot;: 2144083,
+        &quot;co-leader&quot;: 2148320,
+        &quot;respect&quot;: 143361,
+        &quot;age&quot;: 1853,
+        &quot;capacity&quot;: 40,
+        &quot;best_chain&quot;: 100,
+        &quot;territory_wars&quot;: [],
+        &quot;raid_wars&quot;: [],
+        &quot;peace&quot;: [],
+        &quot;rank&quot;: {
+            &quot;level&quot;: 2,
+            &quot;name&quot;: &quot;Bronze&quot;,
+            &quot;division&quot;: 0,
+            &quot;position&quot;: 0
+        },
+        &quot;members&quot;: {
+            ...
+        }
+    }
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/faction/skills
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#view_member_skills_example" role="button" aria-expanded="false" aria-controls="view_member_skills_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="view_member_skills_example">
+                <div class="card-body">
+                    Displays skills for faction members or yourself if not in a faction.
+        <pre>
+        {
+ 	&quot;status&quot;: true,
+ 	&quot;message&quot;: &quot;Faction member skills found.&quot;,
+ 	&quot;members&quot;: {
+ 		&quot;776&quot;: {
+ 			&quot;hunting&quot;: 96.27,
+ 			&quot;reviving&quot;: 100,
+ 			&quot;racing&quot;: 100,
+ 			&quot;bootlegging&quot;: 100,
+ 			&quot;burglary&quot;: 100,
+ 			&quot;graffiti&quot;: 100,
+ 			&quot;pickpocketing&quot;: 100,
+ 			&quot;search_for_cash&quot;: 100,
+ 			&quot;shoplifting&quot;: 100,
+ 			&quot;card_skimming&quot;: 100,
+ 			&quot;hustling&quot;: 100,
+ 			&quot;disposal&quot;: 100,
+ 			&quot;cracking&quot;: 100,
+ 			&quot;forgery&quot;: 100,
+ 			&quot;scamming&quot;: 100,
+ 			&quot;updated_at&quot;: &quot;2024-10-13T23:37:16.000000Z&quot;
+ 		},
+ 		&quot;778&quot;: {
+ 			...
+ 		},
+ 	}
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/events
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#events_example" role="button" aria-expanded="false" aria-controls="events_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="events_example">
+                <div class="card-body">
+                    Displays your latest events on Torn Stats.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;events&quot;: [
+        {
+            &quot;timestamp&quot;: 1613153932,
+            &quot;event&quot;: &quot;IceBlueFire [776] has requested you take 1 member from JFK.&quot;,
+            &quot;seen&quot;: 1
+        },
+        {
+            &quot;timestamp&quot;: 1613153901,
+            &quot;event&quot;: &quot;IceBlueFire [776] has requested you take 2 members from JFK.&quot;,
+            &quot;seen&quot;: 1
+        }
+    ]
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/battlestats/record
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#battle_stats_example" role="button" aria-expanded="false" aria-controls="battle_stats_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="battle_stats_example">
+                <div class="card-body">
+                    Updates player's battle stats and returns the gain since last update.
+        <pre>
+        {
+    &quot;age&quot;: &quot;3 minutes ago&quot;,
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Updated stats for 776&quot;,
+    &quot;deltaStrength&quot;: 0,
+    &quot;deltaDefense&quot;: 0,
+    &quot;deltaDexterity&quot;: 0,
+    &quot;deltaSpeed&quot;: 0
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/hof/[1/0]
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#share_hof_example" role="button" aria-expanded="false" aria-controls="share_hof_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="share_hof_example">
+                <div class="card-body">
+                    Updates the player's preference of participating in sharing their battle stats anonymously.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;You have turned sharing on! Thank you for participating anonymously.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/settings&amp;comparespy=[1/0]&amp;comparepersonal=[1/0]&amp;personalstats=xantaken,attackswon,refills,statenhancersused
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#settings_example" role="button" aria-expanded="false" aria-controls="settings_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="settings_example">
+                <div class="card-body">
+                    Updates the player's preferences for comparing details on profiles.<br>
+<em>spy</em> decides whether to display spy details or not.<br>
+<em>comparespy</em> decides whether to display the stat differences in spies.<br>
+<em>comparepersonal</em> decides whether to display personal stats or not.<br>
+<em>personalstats</em> is a comma separated string of API-friendly references to personal stats. The order in which they're entered in the string is the order in which they'll appear on profiles.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Your settings have been updated!&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/spy/user/{user_id}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#view_spy_example" role="button" aria-expanded="false" aria-controls="view_spy_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="view_spy_example">
+                <div class="card-body">
+                    Loads profile details about the target. Accepts the Torn ID or the Torn Name as the <em>target</em>.
+        <pre>
+        {
+    &quot;compare&quot;: {
+        &quot;status&quot;: true,
+        &quot;data&quot;: {
+            &quot;Xanax Taken&quot;: {
+                &quot;amount&quot;: 1245,
+                &quot;difference&quot;: 0
+            },
+            &quot;Refills&quot;: {
+                &quot;amount&quot;: 164,
+                &quot;difference&quot;: 0
+            },
+            &quot;Stat Enhancers Used&quot;: {
+                &quot;amount&quot;: 1,
+                &quot;difference&quot;: 0
+            },
+            &quot;Merits Bought&quot;: {
+                &quot;amount&quot;: 10,
+                &quot;difference&quot;: 0
+            },
+            &quot;Attacks Won&quot;: {
+                &quot;amount&quot;: 1654,
+                &quot;difference&quot;: 0
+            },
+            &quot;Defends Won&quot;: {
+                &quot;amount&quot;: 45,
+                &quot;difference&quot;: 0
+            },
+            &quot;Networth&quot;: {
+                &quot;amount&quot;: 100000000,
+                &quot;difference&quot;: 0
+            }
+        },
+        &quot;timestamp&quot;: &quot;1533752540&quot;,
+        &quot;spy&quot;: {
+            &quot;type&quot;: &quot;faction-share&quot;,
+            &quot;status&quot;: true,
+            &quot;message&quot;: &quot;Shared stats found.&quot;,
+            &quot;target_score&quot;: 30.251259169,
+            &quot;your_score&quot;: 30.251259169,
+            &quot;fair_fight_bonus&quot;: 3,
+            &quot;difference&quot;: &quot;18 hours ago&quot;,
+            &quot;strength&quot;: 100,
+            &quot;deltaStrength&quot;: 0,
+            &quot;defense&quot;: 100,
+            &quot;deltaDefense&quot;: 0,
+            &quot;speed&quot;: 100,
+            &quot;deltaSpeed&quot;: 0,
+            &quot;dexterity&quot;: 100,
+            &quot;deltaDexterity&quot;: 0,
+            &quot;total&quot;: 400,
+            &quot;deltaTotal&quot;: 0
+        },
+        &quot;attacks&quot;: {
+            &quot;status&quot;: false,
+            &quot;message&quot;: &quot;No recent attacks made against this player.&quot;
+        }
+    }
+}
+        </pre>
+                    <em>type</em> will indicate whether it was a <em>faction-spy, personal-spy, or faction-share</em> (indicating they're in the faction)
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/spy/faction/{faction_id}
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#view_spies_of_whole_faction_example" role="button" aria-expanded="false" aria-controls="view_spies_of_whole_faction_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="view_spies_of_whole_faction_example">
+                <div class="card-body">
+                    Loads profile details about the target. Accepts the Torn ID or the Torn Name as the <em>target</em>.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Spy data found.&quot;,
+    &quot;faction&quot;: {
+        &quot;ID&quot;: 8989,
+        &quot;name&quot;: &quot;JUX HQ&quot;,
+        &quot;tag&quot;: &quot;JUX&quot;,
+        &quot;tag_image&quot;: &quot;8989-31756.png&quot;,
+        &quot;leader&quot;: 271665,
+        &quot;co-leader&quot;: 1629262,
+        &quot;respect&quot;: 6821922,
+        &quot;age&quot;: 4843,
+        &quot;capacity&quot;: 100,
+        &quot;best_chain&quot;: 25000,
+        &quot;territory_wars&quot;: [],
+        &quot;raid_wars&quot;: [],
+        &quot;peace&quot;: [],
+        &quot;rank&quot;: {
+        &quot;level&quot;: 3,
+        &quot;name&quot;: &quot;Bronze&quot;,
+        &quot;division&quot;: 1,
+        &quot;position&quot;: 0
+    },
+    &quot;members&quot;: {
+        &quot;790&quot;: {
+            &quot;name&quot;: &quot;Shapeshifter&quot;,
+            &quot;level&quot;: 79,
+            &quot;days_in_faction&quot;: 439,
+            &quot;last_action&quot;: {
+            &quot;status&quot;: &quot;Offline&quot;,
+            &quot;timestamp&quot;: 1642453772,
+            &quot;relative&quot;: &quot;54 minutes ago&quot;
+        },
+        &quot;status&quot;: {
+            &quot;description&quot;: &quot;Okay&quot;,
+            &quot;details&quot;: &quot;&quot;,
+            &quot;state&quot;: &quot;Okay&quot;,
+            &quot;color&quot;: &quot;green&quot;,
+            &quot;until&quot;: 0
+        },
+        &quot;position&quot;: &quot;Step Sibling&quot;,
+        &quot;id&quot;: 790,
+        &quot;personalstats&quot;: {
+            &quot;Xanax Taken&quot;: 469,
+            &quot;Stat Enhancers Used&quot;: 1,
+            &quot;Refills&quot;: 15,
+            &quot;Attacks Won&quot;: 675,
+            &quot;Defends Won&quot;: 95,
+            &quot;Networth&quot;: 7586851691,
+            &quot;Defends Lost&quot;: 1243,
+            &quot;Elo Rating&quot;: 1387,
+            &quot;timestamp&quot;: 1627302167
+        }
+    },
+    ...
+}
+        </pre>
+                    <em>type</em> will indicate whether it was a <em>faction-spy, personal-spy, or faction-share</em> (indicating they're in the faction)
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [GET] https://www.tornstats.com/api/v2/{key}/battlestats/graph
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#battle_stats_graph_example" role="button" aria-expanded="false" aria-controls="battle_stats_graph_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="battle_stats_graph_example">
+                <div class="card-body">
+                    Gets up to 3 months worth of stat data to build a graph out of.
+        <pre>
+        {
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Stats found.&quot;,
+    &quot;share_hof&quot;: &quot;1&quot;,
+    &quot;data&quot;: [
+        {
+            &quot;strength&quot;: 100,
+            &quot;defense&quot;: 100,
+            &quot;speed&quot;: 100,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1525910400,
+            &quot;total&quot;: 400
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 100,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1525996800,
+            &quot;total&quot;: 460
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 100,
+            &quot;timestamp&quot;: 1526083200,
+            &quot;total&quot;: 520
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 1000,
+            &quot;timestamp&quot;: 1526169600,
+            &quot;total&quot;: 1390
+        },
+        {
+            &quot;strength&quot;: 130,
+            &quot;defense&quot;: 130,
+            &quot;speed&quot;: 130,
+            &quot;dexterity&quot;: 1000,
+            &quot;timestamp&quot;: 1526256000,
+            &quot;total&quot;: 1390
+        }
+    ]
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+                <div class="card mb-3">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-10">
+                        [POST] https://www.tornstats.com/api/v2/{key}/store/spy
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <a class="toggle" data-bs-toggle="collapse" href="#record_spy_example" role="button" aria-expanded="false" aria-controls="record_spy_example"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse" id="record_spy_example">
+                <div class="card-body">
+                    Post must include the following parameters: 'player_id', 'player_name', 'player_level'
+The other optional parameters are: 'strength', 'defense', 'speed', 'dexterity', 'total', 'player_faction', 'timestamp'
+To enter faction spies, the user must have the faction permission (API Save Spies) or be a Faction Assistant or above.
+        <pre>
+        {
+    &quot;faction_entered&quot;: true,
+    &quot;personal_entered&quot;: true,
+    &quot;status&quot;: true,
+    &quot;message&quot;: &quot;Spy has been saved. Stats have been updated for IceBlueFire in JFK&#039;s spies. Stats have been updated for IceBlueFire in JFK 2.1&#039;s spies. Stats have been updated for IceBlueFire in your personal spies.&quot;
+}
+        </pre>
+                    
+                </div>
+            </div>
+        </div>
+            </div>
+</div>
+<div class="bd-callout bd-callout-info" >
+    <h4>Status:</h4>
+    Most operations can check for this flag to decide whether the response is good or not.
+</div>
+<div class="bd-callout bd-callout-danger" >
+    <h4>Rate Limit:</h4>
+    This API is rate limited to 100 calls per minute.  You can check the response headers for how many calls before timed out.
+</div>
+<script type="text/javascript">
+$(document).ready(function() {
+    $('.toggle').on('click', function() {
+        $("i", this).toggleClass('fa-chevron-right fa-chevron-down');
+    });
+});
+</script>
+
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="container mt-5 mb-5">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card border-dark">
+                    <div class="card-body">
+                        <div class="row justify-content-between">
+                            <div class="col-md-4">
+                                <small>Visit one of our sponsors:</small>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <small><a href="https://www.tornstats.com/banners/all">View All Banners</a> | <a
+                                        href="https://www.tornstats.com/banners">Advertise Here</a></small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <a href="https://www.tornstats.com/banners/redirect/187/aHR0cHM6Ly93d3cudG9ybi5jb20vZm9ydW1zLnBocCMvcD10aHJlYWRzJmY9MTQmdD0xNjQxMzU5NSZiPTAmYT0w"
+                                   target="_blank" title="https://www.torn.com/forums.php#/p=threads&amp;f=14&amp;t=16413595&amp;b=0&amp;a=0"><img
+                                        src="https://www.tornstats.com/storage/banners/KP2JRUfP64TgIWnPkodjsW1zdchvZMR3hbQKt3bt.gif"
+                                        class="img-fluid" alt="Banner"></a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div class="container mt-5 mb-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-dark">
+                <div class="card-body">
+                    <p>If you have any questions or problems, please contact a staff member on Torn Stats' <a href="https://discord.gg/PQ7trkh" target="_blank">Discord.</a></p>
+                    <p><em>Any individual player's data will not be reviewed beyond security or maintenance reasons.</em></p>
+                                            <div class="row mt-5">
+			<div class="col-md-12" id="otherContent">
+				<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+				<!-- Responsive Ads -->
+				<ins class="adsbygoogle"
+					style="display:block"
+					data-ad-client="ca-pub-2075820298625870"
+					data-ad-slot="3907692145"
+					data-ad-format="auto"></ins>
+				<script>
+				(adsbygoogle = window.adsbygoogle || []).push({});
+				</script>
+			</div>
+		</div>
+	<script>
+	$(function () {
+	  $('[data-toggle="tooltip"]').tooltip()
+	})
+	window.setTimeout(function(){
+		if(adsbygoogle instanceof Array) {
+			$('#otherContent').html('<center>Hey there! I see you\'re blocking ads.  I don\'t mind you blocking ads, but it\'s a passive way for me to keep this site running.  If you appreciate this site and the tools it offers, I\'d appreciate any help in keeping the server running. Thanks!<form action="https://www.paypal.com/donate" method="post" target="_top"><input type="hidden" name="hosted_button_id" value="VZMV2F3RZSWLY" /><input type="hidden" name="custom" value="0" /><input type="image" src="https://www.tornstats.com/images/logos/donation_button_small.png" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" /><img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" /></form></center>');
+		} else {
+			// adsbygoogle.js executed
+		}
+	}, 2000);
+</script>                                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+        
+
+        <script type="text/javascript">
+            $(function () {
+                $('[data-toggle="tooltip"]').tooltip({
+                    container: 'body'
+                });
+                var tooltipTriggerList = [].slice
+                    .call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList
+                    .map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl)
+                    })
+
+                            })
+        </script>
+            </div>
+</body>
+</html>
