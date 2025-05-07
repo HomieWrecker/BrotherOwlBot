@@ -11,14 +11,22 @@ const statIntegrations = require('./utils/stat-integrations');
 // We need a TornStats API key for this test
 const apiKey = process.env.TORNSTATS_API_KEY; // Use the dedicated TornStats API key
 
+// Check if we have an API key
 if (!apiKey) {
-  logError('ERROR: No TornStats API key provided. Set TORNSTATS_API_KEY environment variable.');
-  process.exit(1);
+  log('WARNING: No TornStats API key provided. Set TORNSTATS_API_KEY environment variable.');
+  log('Proceeding with test but results may be limited or fallbacks will be used.');
+  // Note: We don't exit since we now have HTML parsing and fallbacks
 }
 
 // Test with public player IDs (Torn's staff or well-known players)
 // These IDs should be available in most spy services
-const testPlayerIds = ['1', '2', '4']; // Chedburn, Cheddah, Oran
+const testPlayerIds = [
+  '1', // Chedburn
+  '2', // Cheddah
+  '4', // Oran
+  '225742', // MrConcussion (a more recent active player)
+  '1468764' // Bogie (another known player)
+];
 
 /**
  * Test TornStats spy integration

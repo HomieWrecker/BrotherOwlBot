@@ -264,6 +264,46 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       return spyResponse.data;
     }
     
+    // Format 4: Try the web page directly and parse HTML
+    log(`Trying to get stats from TornStats web page for player ${playerId}`);
+    
+    // First try the direct player page - no login required
+    let htmlResponse = await makeRequest({
+      hostname: 'www.tornstats.com',
+      path: `/player.php?id=${playerId}`,
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html',
+        'User-Agent': 'BrotherOwlDiscordBot/1.0'
+      }
+    }, null, true); // Expect HTML here
+    
+    // If that fails, try the spy.php endpoint which sometimes works without authentication
+    if (htmlResponse.statusCode !== 200 || !htmlResponse.rawHtml) {
+      log(`First HTML approach failed, trying alternate URL for player ${playerId}`);
+      htmlResponse = await makeRequest({
+        hostname: 'www.tornstats.com',
+        path: `/spy.php?id=${playerId}`,
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Cookie': `tornstats_api=${apiKey}`  // Some endpoints accept API key as a cookie
+        }
+      }, null, true); // Expect HTML here
+    }
+    
+    if (htmlResponse.statusCode === 200 && htmlResponse.rawHtml) {
+      log(`Successfully fetched HTML page from TornStats for player ${playerId}`);
+      
+      // Try to extract battle stats from HTML
+      const statsData = extractStatsFromTornStatsHtml(htmlResponse.rawHtml, playerId);
+      if (statsData) {
+        log(`Successfully extracted stats from TornStats HTML for player ${playerId}`);
+        return statsData;
+      }
+    }
+    
     // If all spy attempts fail, try a stats endpoint
     let statsResponse = await makeRequest({
       hostname: 'www.tornstats.com',
@@ -531,6 +571,139 @@ async function getPlayerStatsFromAllSources(playerId, apiKeys = {}) {
   }
 }
 
+/**
+ * Extract player stats from TornStats HTML page
+ * @param {string} html - HTML content from TornStats
+ * @param {string} playerId - Player ID for reference
+ * @returns {Object|null} Extracted stats data or null
+ */
+function extractStatsFromTornStatsHtml(html, playerId) {
+  try {
+    log(`Parsing HTML for player ${playerId}`);
+    
+    // Basic validation to make sure we have HTML to work with
+    if (!html || typeof html !== 'string' || html.length < 100) {
+      logError(`Invalid HTML content for player ${playerId}`);
+      return null;
+    }
+    
+    // Check if the page contains player stats
+    if (!html.includes('Battle Stats') && !html.includes('Last updated')) {
+      log(`HTML doesn't appear to contain battle stats for player ${playerId}`);
+      return null;
+    }
+    
+    // Try to extract player name
+    let playerName = null;
+    const nameMatch = html.match(/<title>([^<]+)(?:'s)?\s+Profile(?:\s+|\|)/i);
+    if (nameMatch && nameMatch[1]) {
+      playerName = nameMatch[1].trim();
+    }
+    
+    // Extract level
+    let level = 0;
+    const levelMatch = html.match(/Level:\s*(\d+)/i);
+    if (levelMatch && levelMatch[1]) {
+      level = parseInt(levelMatch[1]);
+    }
+    
+    // Extract last update time
+    let updateTime = null;
+    const updateMatch = html.match(/Last updated:?\s*([^<]+)/i);
+    if (updateMatch && updateMatch[1]) {
+      updateTime = updateMatch[1].trim();
+    }
+    
+    // Find the battle stats section
+    // Looking for patterns like:
+    // <div class="stat">Strength: 12,345,678</div>
+    // <td>Strength</td><td>12,345,678</td>
+    // Various other possible formats
+    
+    let strength = 0, defense = 0, speed = 0, dexterity = 0;
+    
+    // Various regex patterns to try
+    const patterns = [
+      // Pattern 1: <something>Strength: 12,345,678<something>
+      {
+        strength: /[Ss]trength:?\s*([\d,]+)/,
+        defense: /[Dd]efense:?\s*([\d,]+)/,
+        speed: /[Ss]peed:?\s*([\d,]+)/,
+        dexterity: /[Dd]exterity:?\s*([\d,]+)/
+      },
+      // Pattern 2: <td>Strength</td><td>12,345,678</td>
+      {
+        strength: /<td[^>]*>[Ss]trength<\/td>\s*<td[^>]*>([\d,]+)<\/td>/,
+        defense: /<td[^>]*>[Dd]efense<\/td>\s*<td[^>]*>([\d,]+)<\/td>/,
+        speed: /<td[^>]*>[Ss]peed<\/td>\s*<td[^>]*>([\d,]+)<\/td>/,
+        dexterity: /<td[^>]*>[Dd]exterity<\/td>\s*<td[^>]*>([\d,]+)<\/td>/
+      },
+      // Pattern 3: class="stat-name">Strength</div><div class="stat-value">12,345,678</div>
+      {
+        strength: /class="[^"]*stat-name[^"]*"[^>]*>[Ss]trength<\/[^>]+><[^>]+class="[^"]*stat-value[^"]*"[^>]*>([\d,]+)<\//,
+        defense: /class="[^"]*stat-name[^"]*"[^>]*>[Dd]efense<\/[^>]+><[^>]+class="[^"]*stat-value[^"]*"[^>]*>([\d,]+)<\//,
+        speed: /class="[^"]*stat-name[^"]*"[^>]*>[Ss]peed<\/[^>]+><[^>]+class="[^"]*stat-value[^"]*"[^>]*>([\d,]+)<\//,
+        dexterity: /class="[^"]*stat-name[^"]*"[^>]*>[Dd]exterity<\/[^>]+><[^>]+class="[^"]*stat-value[^"]*"[^>]*>([\d,]+)<\//
+      }
+    ];
+    
+    // Try each pattern until we find a match
+    for (const pattern of patterns) {
+      const strengthMatch = html.match(pattern.strength);
+      const defenseMatch = html.match(pattern.defense);
+      const speedMatch = html.match(pattern.speed);
+      const dexterityMatch = html.match(pattern.dexterity);
+      
+      if (strengthMatch && strengthMatch[1]) {
+        strength = parseInt(strengthMatch[1].replace(/,/g, ''));
+      }
+      
+      if (defenseMatch && defenseMatch[1]) {
+        defense = parseInt(defenseMatch[1].replace(/,/g, ''));
+      }
+      
+      if (speedMatch && speedMatch[1]) {
+        speed = parseInt(speedMatch[1].replace(/,/g, ''));
+      }
+      
+      if (dexterityMatch && dexterityMatch[1]) {
+        dexterity = parseInt(dexterityMatch[1].replace(/,/g, ''));
+      }
+      
+      // If we found at least some stats, break
+      if (strength > 0 || defense > 0 || speed > 0 || dexterity > 0) {
+        break;
+      }
+    }
+    
+    // If we couldn't find any stats, return null
+    if (strength === 0 && defense === 0 && speed === 0 && dexterity === 0) {
+      log(`Could not find any battle stats in HTML for player ${playerId}`);
+      return null;
+    }
+    
+    // Log the stats we found
+    log(`Extracted stats for ${playerName || playerId}: STR=${strength}, DEF=${defense}, SPD=${speed}, DEX=${dexterity}`);
+    
+    // Return in same format as API would
+    return {
+      spy: {
+        name: playerName || `Player ${playerId}`,
+        level: level || 0,
+        strength: strength,
+        defense: defense,
+        speed: speed,
+        dexterity: dexterity,
+        update_time: updateTime || new Date().toISOString(),
+        source: 'HTML Parsing'
+      }
+    };
+  } catch (error) {
+    logError(`Error extracting stats from TornStats HTML for player ${playerId}:`, error);
+    return null;
+  }
+}
+
 module.exports = {
   fetchFromYATA,
   fetchFromTornStats,
@@ -538,5 +711,6 @@ module.exports = {
   fetchFromTornTools,
   fetchFromTornPDA,
   submitPlayerStats,
-  getPlayerStatsFromAllSources
+  getPlayerStatsFromAllSources,
+  extractStatsFromTornStatsHtml
 };
