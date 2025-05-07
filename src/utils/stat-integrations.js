@@ -17,7 +17,7 @@ const { log, logError } = require('./logger');
  * @param {string} postData - Optional POST data
  * @returns {Promise<Object>} Response data or null on error
  */
-function makeRequest(options, postData = null) {
+function makeRequest(options, postData = null, expectHtml = false) {
   return new Promise((resolve) => {
     try {
       const req = https.request(options, (res) => {
@@ -29,11 +29,38 @@ function makeRequest(options, postData = null) {
         
         res.on('end', () => {
           try {
+            // If we're expecting HTML or content type is HTML
+            const contentType = res.headers['content-type'] || '';
+            if (expectHtml || contentType.includes('html')) {
+              resolve({
+                statusCode: res.statusCode,
+                contentType: contentType,
+                rawHtml: data
+              });
+              return;
+            }
+            
+            // Otherwise try to parse as JSON
             const response = res.statusCode === 204 ? {} : JSON.parse(data);
             resolve({ statusCode: res.statusCode, data: response });
           } catch (error) {
+            // If JSON parsing fails but we received HTML
+            if (data.includes('<!DOCTYPE html>') || data.includes('<html>')) {
+              resolve({
+                statusCode: res.statusCode,
+                contentType: 'text/html',
+                rawHtml: data,
+                error: 'Received HTML when expecting JSON'
+              });
+              return;
+            }
+            
             logError('Error parsing response:', error);
-            resolve({ statusCode: 500, error: 'Error parsing response' });
+            resolve({ 
+              statusCode: 500, 
+              error: 'Error parsing response',
+              rawData: data 
+            });
           }
         });
       });

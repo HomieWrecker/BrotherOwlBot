@@ -133,7 +133,7 @@ async function scrapePlayerProfile(playerId) {
     
     // Parse the content to extract useful information
     // This is a simplified version - real implementation would be more robust
-    let parsedData = {
+    const parsedData = {
       id: playerId,
       name: extractInfo(content, /Name:\s*([^<\n]+)/),
       level: parseInt(extractInfo(content, /Level:\s*(\d+)/)) || 0,
@@ -143,13 +143,209 @@ async function scrapePlayerProfile(playerId) {
         name: extractInfo(content, /Faction:\s*([^<\n]+)/),
         position: extractInfo(content, /Position:\s*([^<\n]+)/)
       },
-      awards: parseInt(extractInfo(content, /Awards:\s*(\d+)/)) || 0
+      awards: parseInt(extractInfo(content, /Awards:\s*(\d+)/)) || 0,
+      age: parseInt(extractInfo(content, /Age:\s*(\d+)/)) || 0,
+      property: extractInfo(content, /Property:\s*([^<\n]+)/),
+      job: extractInfo(content, /Job:\s*([^<\n]+)/),
+      rank: extractInfo(content, /Rank:\s*([^<\n]+)/),
+      rankedWarCount: parseInt(extractInfo(content, /Ranked Wars:\s*(\d+)/)) || 0,
+      competitiveWarCount: parseInt(extractInfo(content, /Competitive Wars:\s*(\d+)/)) || 0,
+      networth: parseNetworth(extractInfo(content, /Networth:\s*([^<\n]+)/)),
+      factionPosition: extractInfo(content, /Position:\s*([^<\n]+)/),
+      
+      // Estimation relevant data
+      awards_analysis: {
+        combat_awards: estimateCombatAwards(content),
+        education_awards: estimateEducationAwards(content),
+        total_awards: parseInt(extractInfo(content, /Awards:\s*(\d+)/)) || 0
+      },
+      
+      // Activity indicators
+      activity_indicators: {
+        last_action: extractInfo(content, /Last Action:\s*([^<\n]+)/),
+        status: extractInfo(content, /Status:\s*([^<\n]+)/),
+        estimated_activity: estimateActivityFromProfile(content)
+      }
     };
+    
+    // Extract battle stats hints from profile
+    parsedData.battle_indicators = extractBattleIndicators(content);
     
     return parsedData;
   } catch (error) {
     logError(`Error scraping player profile ${playerId}:`, error);
     return null;
+  }
+}
+
+/**
+ * Parse networth string to number
+ * @param {string} networthStr - Networth string (e.g. "$1.23bil")
+ * @returns {number} Networth value
+ */
+function parseNetworth(networthStr) {
+  if (!networthStr) {
+    return 0;
+  }
+  
+  try {
+    // Remove "$" and spaces
+    let value = networthStr.replace(/[$\s]/g, '');
+    
+    // Convert abbreviations to numbers
+    if (value.includes('bil')) {
+      value = parseFloat(value.replace('bil', '')) * 1000000000;
+    } else if (value.includes('mil')) {
+      value = parseFloat(value.replace('mil', '')) * 1000000;
+    } else if (value.includes('k')) {
+      value = parseFloat(value.replace('k', '')) * 1000;
+    } else {
+      value = parseFloat(value);
+    }
+    
+    return isNaN(value) ? 0 : value;
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
+ * Estimate number of combat awards from profile
+ * @param {string} content - Profile content
+ * @returns {number} Estimated number of combat awards
+ */
+function estimateCombatAwards(content) {
+  try {
+    // Look for awards related to combat
+    let combatAwards = 0;
+    
+    // Common combat awards
+    const combatAwardPatterns = [
+      /Combat:\s*(\d+)/i,
+      /Defender:\s*(\d+)/i,
+      /Damage:\s*(\d+)/i,
+      /Destruction:\s*(\d+)/i,
+      /Chain:\s*(\d+)/i,
+      /Critical Hit:\s*(\d+)/i,
+      /Finishing Hit:\s*(\d+)/i,
+      /Bounty Hunter:\s*(\d+)/i,
+      /War Champion:\s*(\d+)/i
+    ];
+    
+    combatAwardPatterns.forEach(pattern => {
+      const match = content.match(pattern);
+      if (match && match[1]) {
+        combatAwards += parseInt(match[1]) || 0;
+      }
+    });
+    
+    return combatAwards;
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
+ * Estimate number of education awards from profile
+ * @param {string} content - Profile content
+ * @returns {number} Estimated number of education awards
+ */
+function estimateEducationAwards(content) {
+  try {
+    // Look for awards related to education
+    let eduAwards = 0;
+    
+    // Common education awards
+    const eduAwardPatterns = [
+      /Education:\s*(\d+)/i,
+      /Intelligence:\s*(\d+)/i,
+      /Learning:\s*(\d+)/i,
+      /Experience:\s*(\d+)/i
+    ];
+    
+    eduAwardPatterns.forEach(pattern => {
+      const match = content.match(pattern);
+      if (match && match[1]) {
+        eduAwards += parseInt(match[1]) || 0;
+      }
+    });
+    
+    return eduAwards;
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
+ * Extract battle indicators from profile
+ * @param {string} content - Profile content
+ * @returns {Object} Battle indicators
+ */
+function extractBattleIndicators(content) {
+  try {
+    // Look for text that might indicate battle stats
+    const indicators = {
+      has_strength_gym: content.includes('Strength Gym') || content.includes('strength gym'),
+      has_defense_gym: content.includes('Defense Gym') || content.includes('defense gym'),
+      has_speed_gym: content.includes('Speed Gym') || content.includes('speed gym'),
+      has_dexterity_gym: content.includes('Dexterity Gym') || content.includes('dexterity gym'),
+      has_combat_badges: content.includes('Combat Badge') || content.includes('combat badge'),
+      has_attack_history: content.includes('recent attacks') || content.includes('Recent Attacks'),
+      is_hospital_frequent: content.includes('hospitalized') || content.includes('Hospitalized'),
+      notable_rank: content.includes('General') || content.includes('Warlord')
+    };
+    
+    return indicators;
+  } catch (error) {
+    return {
+      has_strength_gym: false,
+      has_defense_gym: false,
+      has_speed_gym: false,
+      has_dexterity_gym: false,
+      has_combat_badges: false,
+      has_attack_history: false,
+      is_hospital_frequent: false,
+      notable_rank: false
+    };
+  }
+}
+
+/**
+ * Estimate activity level from profile content
+ * @param {string} content - Profile content
+ * @returns {string} Estimated activity level
+ */
+function estimateActivityFromProfile(content) {
+  try {
+    const lastAction = extractInfo(content, /Last Action:\s*([^<\n]+)/);
+    
+    if (!lastAction) {
+      return 'Unknown';
+    }
+    
+    if (lastAction.includes('minute')) {
+      return 'Very Active';
+    } else if (lastAction.includes('hour')) {
+      if (parseInt(lastAction) <= 3) {
+        return 'Active';
+      } else {
+        return 'Semi-Active';
+      }
+    } else if (lastAction.includes('day')) {
+      if (parseInt(lastAction) <= 1) {
+        return 'Daily';
+      } else if (parseInt(lastAction) <= 3) {
+        return 'Semi-Active';
+      } else {
+        return 'Inactive';
+      }
+    } else if (lastAction.includes('week') || lastAction.includes('month')) {
+      return 'Inactive';
+    }
+    
+    return 'Unknown';
+  } catch (error) {
+    return 'Unknown';
   }
 }
 
