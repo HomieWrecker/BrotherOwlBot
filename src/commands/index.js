@@ -107,7 +107,7 @@ try {
 }
 
 try {
-  activitymapCommand = require('./activitymap');
+  activitymapCommand = require('./activitymap').activitymapCommand;
   log('Loaded activity heat map command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -115,7 +115,7 @@ try {
 }
 
 try {
-  warpayCommand = require('./warpay');
+  warpayCommand = require('./warpay').warpayCommand;
   log('Loaded war pay command');
 } catch (error) {
   // Silently continue if module doesn't exist
