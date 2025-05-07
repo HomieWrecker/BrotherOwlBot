@@ -521,6 +521,25 @@ function startBot() {
             }
           }
         }
+        // Handle battle stats buttons
+        else if (interaction.customId.startsWith('battlestats_')) {
+          // Try to find battlestats command
+          const battlestatsCommand = client.commands.get('battlestats');
+          if (battlestatsCommand && battlestatsCommand.handleButton) {
+            // Use a separate try-catch to ensure battle stats buttons don't affect other functionality
+            try {
+              await battlestatsCommand.handleButton(interaction, client);
+            } catch (statsError) {
+              logError('Error in battle stats button handler (isolated):', statsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this battle stats action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
         
@@ -691,6 +710,25 @@ function startBot() {
               await warstrategyCommand.handleSelectMenu(interaction, client);
             } catch (strategyError) {
               logError('Error in war strategy select menu handler (isolated):', strategyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your selection. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle activity heat map select menus
+        else if (interaction.customId.startsWith('heatmap_')) {
+          // Try to find activitymap command
+          const activitymapCommand = client.commands.get('activitymap');
+          if (activitymapCommand && activitymapCommand.handleSelectMenu) {
+            // Use a separate try-catch to ensure activity heat map select menus don't affect other functionality
+            try {
+              await activitymapCommand.handleSelectMenu(interaction, client);
+            } catch (heatmapError) {
+              logError('Error in activity heat map select menu handler (isolated):', heatmapError);
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing your selection. This error has been logged and will not affect other bot functionality.',

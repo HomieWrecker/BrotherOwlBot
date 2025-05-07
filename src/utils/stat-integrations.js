@@ -1,0 +1,328 @@
+/**
+ * Stat Integrations Utility for BrotherOwlManager
+ * 
+ * This utility handles communication with external stat services
+ * such as YATA, TornStats, TornTools, and TornPDA.
+ * 
+ * All operations are isolated from core bot functionality and use
+ * try/catch blocks to prevent errors from propagating.
+ */
+
+const https = require('https');
+const { log, logError } = require('./logger');
+
+/**
+ * Base function for making HTTPS requests
+ * @param {Object} options - Request options
+ * @param {string} postData - Optional POST data
+ * @returns {Promise<Object>} Response data or null on error
+ */
+function makeRequest(options, postData = null) {
+  return new Promise((resolve) => {
+    try {
+      const req = https.request(options, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const response = res.statusCode === 204 ? {} : JSON.parse(data);
+            resolve({ statusCode: res.statusCode, data: response });
+          } catch (error) {
+            logError('Error parsing response:', error);
+            resolve({ statusCode: 500, error: 'Error parsing response' });
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        logError('Request error:', error);
+        resolve({ statusCode: 500, error: error.message });
+      });
+      
+      req.setTimeout(10000, () => {
+        logError('Request timed out');
+        req.abort();
+        resolve({ statusCode: 408, error: 'Request timed out' });
+      });
+      
+      if (postData) {
+        req.write(postData);
+      }
+      
+      req.end();
+    } catch (error) {
+      logError('Exception in makeRequest:', error);
+      resolve({ statusCode: 500, error: error.message });
+    }
+  });
+}
+
+/**
+ * Fetch player stats from YATA
+ * @param {string} playerId - Player ID
+ * @param {string} apiKey - YATA API key (optional)
+ * @returns {Promise<Object|null>} Player stats or null
+ */
+async function fetchFromYATA(playerId, apiKey = null) {
+  try {
+    const options = {
+      hostname: 'yata.yt',
+      path: `/api/v1/player/${playerId}/`,
+      method: 'GET',
+      headers: {}
+    };
+    
+    if (apiKey) {
+      options.headers['X-API-KEY'] = apiKey;
+    }
+    
+    const response = await makeRequest(options);
+    
+    if (response.statusCode !== 200 || response.error) {
+      logError(`YATA API error for player ${playerId}: ${response.error || 'Unknown error'}`);
+      return null;
+    }
+    
+    // Extract relevant battle stats if available
+    if (response.data && response.data.player && response.data.player.status && 
+        response.data.player.status.state === 'ok' && response.data.player.battleStats) {
+      
+      const stats = response.data.player.battleStats;
+      
+      return {
+        battleStats: {
+          strength: stats.strength || 0,
+          speed: stats.speed || 0,
+          dexterity: stats.dexterity || 0,
+          defense: stats.defense || 0,
+          total: stats.total || 0
+        },
+        playerProfile: {
+          level: response.data.player.level || 0,
+          age: response.data.player.age || 0,
+          timestamp: Date.now()
+        }
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    logError(`Error in fetchFromYATA for player ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch player stats from TornStats
+ * @param {string} playerId - Player ID
+ * @param {string} apiKey - TornStats API key
+ * @returns {Promise<Object|null>} Player stats or null
+ */
+async function fetchFromTornStats(playerId, apiKey) {
+  try {
+    if (!apiKey) {
+      return null;
+    }
+    
+    const options = {
+      hostname: 'www.tornstats.com',
+      path: `/api/v2/${apiKey}/spy/${playerId}`,
+      method: 'GET'
+    };
+    
+    const response = await makeRequest(options);
+    
+    if (response.statusCode !== 200 || response.error) {
+      logError(`TornStats API error for player ${playerId}: ${response.error || 'Unknown error'}`);
+      return null;
+    }
+    
+    // Extract relevant battle stats if available
+    if (response.data && response.data.status === 'success' && response.data.spy) {
+      const stats = response.data.spy;
+      
+      return {
+        battleStats: {
+          strength: stats.strength || 0,
+          speed: stats.speed || 0,
+          dexterity: stats.dexterity || 0,
+          defense: stats.defense || 0,
+          total: (stats.strength || 0) + (stats.speed || 0) + 
+                 (stats.dexterity || 0) + (stats.defense || 0)
+        },
+        playerProfile: {
+          level: stats.level || 0,
+          timestamp: Date.now(),
+          update_time: stats.update_time || null
+        }
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    logError(`Error in fetchFromTornStats for player ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch player stats from TornTools
+ * @param {string} playerId - Player ID
+ * @param {string} apiKey - TornTools API key (optional)
+ * @returns {Promise<Object|null>} Player stats or null
+ */
+async function fetchFromTornTools(playerId, apiKey = null) {
+  try {
+    // TornTools currently doesn't have a public API for stats
+    // This is a placeholder for when/if they add one
+    
+    // For now, return null to indicate no data
+    return null;
+  } catch (error) {
+    logError(`Error in fetchFromTornTools for player ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch player stats from TornPDA
+ * @param {string} playerId - Player ID
+ * @param {string} apiKey - TornPDA API key (optional)
+ * @returns {Promise<Object|null>} Player stats or null
+ */
+async function fetchFromTornPDA(playerId, apiKey = null) {
+  try {
+    // TornPDA currently doesn't have a public API for stats
+    // This is a placeholder for when/if they add one
+    
+    // For now, return null to indicate no data
+    return null;
+  } catch (error) {
+    logError(`Error in fetchFromTornPDA for player ${playerId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Submit player stats to external services (with consent)
+ * @param {string} playerId - Player ID
+ * @param {Object} statsData - Stats data to submit
+ * @param {Object} apiKeys - API keys for different services
+ * @param {boolean} consentGiven - Whether the user has consented to sharing
+ * @returns {Promise<Object>} Submission results
+ */
+async function submitPlayerStats(playerId, statsData, apiKeys, consentGiven = false) {
+  try {
+    if (!consentGiven) {
+      return { success: false, message: 'User consent required to share stats' };
+    }
+    
+    const results = {
+      success: false,
+      submissions: {}
+    };
+    
+    // Submit to YATA if possible
+    if (apiKeys.yata) {
+      results.submissions.yata = await submitStatsToYATA(playerId, statsData, apiKeys.yata);
+    }
+    
+    // Submit to TornStats if possible
+    if (apiKeys.tornstats) {
+      results.submissions.tornstats = await submitStatsToTornStats(playerId, statsData, apiKeys.tornstats);
+    }
+    
+    // Determine overall success
+    results.success = Object.values(results.submissions).some(result => result && result.success);
+    
+    return results;
+  } catch (error) {
+    logError(`Error in submitPlayerStats for player ${playerId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Submit stats to YATA
+ * @param {string} playerId - Player ID
+ * @param {Object} statsData - Stats data to submit
+ * @param {string} apiKey - YATA API key
+ * @returns {Promise<Object>} Submission result
+ */
+async function submitStatsToYATA(playerId, statsData, apiKey) {
+  try {
+    if (!apiKey || !statsData || !statsData.battleStats) {
+      return { success: false, message: 'Missing required data' };
+    }
+    
+    const postData = JSON.stringify({
+      player_id: playerId,
+      battle_stats: {
+        strength: statsData.battleStats.strength,
+        speed: statsData.battleStats.speed,
+        dexterity: statsData.battleStats.dexterity,
+        defense: statsData.battleStats.defense
+      }
+    });
+    
+    const options = {
+      hostname: 'yata.yt',
+      path: '/api/v1/battlestats/',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+        'X-API-KEY': apiKey
+      }
+    };
+    
+    const response = await makeRequest(options, postData);
+    
+    if (response.statusCode !== 200 || response.error) {
+      return { 
+        success: false, 
+        message: `YATA API error: ${response.error || 'Unknown error'}`
+      };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    logError(`Error in submitStatsToYATA for player ${playerId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Submit stats to TornStats
+ * @param {string} playerId - Player ID
+ * @param {Object} statsData - Stats data to submit
+ * @param {string} apiKey - TornStats API key
+ * @returns {Promise<Object>} Submission result
+ */
+async function submitStatsToTornStats(playerId, statsData, apiKey) {
+  try {
+    if (!apiKey || !statsData || !statsData.battleStats) {
+      return { success: false, message: 'Missing required data' };
+    }
+    
+    // TornStats doesn't have a public API for submitting stats
+    // This is a placeholder for when/if they add one
+    
+    return { success: false, message: 'API not available' };
+  } catch (error) {
+    logError(`Error in submitStatsToTornStats for player ${playerId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = {
+  fetchFromYATA,
+  fetchFromTornStats,
+  fetchFromTornTools,
+  fetchFromTornPDA,
+  submitPlayerStats
+};
