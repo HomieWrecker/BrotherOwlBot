@@ -613,3 +613,5 @@ function getConfidenceColor(confidence) {
       return 0x95a5a6; // Gray
   }
 }
+
+module.exports = { battlestatsCommand };

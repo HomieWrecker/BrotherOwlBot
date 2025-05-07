@@ -17,7 +17,7 @@ const { log } = require('../utils/logger');
 const { BOT_CONFIG } = require('../config');
 const { reconnectTornWS, resetAllConnections } = require('../torn-ws');
 
-module.exports = {
+const apiconnectionCommand = {
   data: new SlashCommandBuilder()
     .setName('apiconnection')
     .setDescription('Check the status of Torn API connections and manage connectivity')
@@ -226,4 +226,4 @@ async function handleResetSubcommand(interaction, client) {
     embeds: [embed],
     content: 'Use `/apiconnection status` in a few seconds to see the updated connection state.'
   });
-}
+}module.exports = { apiconnectionCommand };
