@@ -86,27 +86,34 @@ class TornStatsAdapter:
             return None
 
     async def _fetch_json_api(self, player_id):
-        """Attempt direct JSON API access with multiple endpoint formats"""
+        """Attempt direct JSON API access with official endpoint formats"""
         if not self.api_key:
             logger.warning("No API key provided for TornStats")
             return None
-            
+        
+        # Use the official TornStats API endpoints
         endpoints = [
-            # Format 1: Direct API v1
-            f"/api/v1/{self.api_key}/spy/user/{player_id}",
-            # Format 2: API v2
-            f"/api/v2/{self.api_key}/spy/{player_id}",
-            # Format 3: Legacy format
-            f"/api.php?v=user&action=spy&id={player_id}&key={self.api_key}",
-            # Format 4: Stats format
-            f"/api/v1/{self.api_key}/stats/{player_id}"
+            # Player basic endpoint
+            f"https://www.tornstats.com/api/v1/player/{player_id}",
+            # Player full endpoint (more detailed)
+            f"https://www.tornstats.com/api/v1/player/{player_id}/full",
+            # Battle stats endpoint
+            f"https://www.tornstats.com/api/v1/battles/{player_id}",
         ]
-
+        
         for endpoint in endpoints:
             logger.info(f"Trying endpoint: {endpoint}")
             try:
+                headers = {
+                    'User-Agent': 'BrotherOwlManager/1.0',
+                    'Accept': 'application/json',
+                    'Referer': 'https://www.tornstats.com/',
+                    'Authorization': f'Bearer {self.api_key}'
+                }
+                
                 async with self.session.get(
-                    f"{self.base_url}{endpoint}",
+                    endpoint,
+                    headers=headers,
                     timeout=5
                 ) as response:
                     if response.status == 200:
@@ -122,11 +129,36 @@ class TornStatsAdapter:
                 logger.warning(f"Error accessing {endpoint}: {str(e)}")
                 continue
                 
+        # If Bearer token didn't work, try API key as parameter
+        for endpoint in endpoints:
+            logger.info(f"Trying endpoint with API key as parameter: {endpoint}")
+            try:
+                endpoint_with_key = f"{endpoint}?key={self.api_key}"
+                async with self.session.get(
+                    endpoint_with_key,
+                    timeout=5
+                ) as response:
+                    if response.status == 200:
+                        try:
+                            data = await response.json(content_type=None)
+                            if data:
+                                logger.info(f"Successfully retrieved JSON data from {endpoint_with_key}")
+                                return self._normalize_tornstats_data(data)
+                        except json.JSONDecodeError:
+                            logger.warning(f"Endpoint {endpoint_with_key} returned non-JSON response")
+                            continue
+            except Exception as e:
+                logger.warning(f"Error accessing {endpoint_with_key}: {str(e)}")
+                continue
+                
         return None
 
     async def _parse_html_profile(self, player_id):
         """Robust HTML fallback parser for TornStats profiles"""
         urls = [
+            # Official HTML profile URL
+            f"https://www.tornstats.com/profiles/{player_id}",
+            # Fallback URLs in case the official one changes
             f"{self.base_url}/player.php?id={player_id}",
             f"{self.base_url}/profiles.php?XID={player_id}",
             f"{self.base_url}/spy.php?id={player_id}"

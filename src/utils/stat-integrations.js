@@ -304,23 +304,55 @@ async function fetchSpyFromTornStats(playerId, apiKey) {
       return spyResponse.data;
     }
     
-    // Format 4: Try newer API endpoints suggested by the user
-    spyResponse = await makeRequest({
-      hostname: 'www.tornstats.com',
-      path: `/api/v1/player/${playerId}`,
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'BrotherOwlDiscordBot/1.0',
-        'Referer': 'https://www.tornstats.com/',
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
+    // Format 4: Try the official API endpoints
+    const officialEndpoints = [
+      // Player basic endpoint
+      `/api/v1/player/${playerId}`,
+      // Player full endpoint
+      `/api/v1/player/${playerId}/full`,
+      // Battle stats endpoint
+      `/api/v1/battles/${playerId}`
+    ];
     
-    log(`TornStats modern API response status: ${spyResponse.statusCode}`);
-    if (spyResponse.statusCode === 200 && !spyResponse.error && spyResponse.data) {
-      log(`Successfully fetched spy data from TornStats modern API for player ${playerId}`);
-      return spyResponse.data;
+    // Try each official endpoint with Bearer token
+    for (const endpoint of officialEndpoints) {
+      spyResponse = await makeRequest({
+        hostname: 'www.tornstats.com',
+        path: endpoint,
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Referer': 'https://www.tornstats.com/',
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      
+      log(`TornStats official endpoint ${endpoint} response status: ${spyResponse.statusCode}`);
+      if (spyResponse.statusCode === 200 && !spyResponse.error && spyResponse.data) {
+        log(`Successfully fetched data from TornStats official endpoint ${endpoint} for player ${playerId}`);
+        return spyResponse.data;
+      }
+    }
+    
+    // Try each official endpoint with API key as query parameter
+    for (const endpoint of officialEndpoints) {
+      spyResponse = await makeRequest({
+        hostname: 'www.tornstats.com',
+        path: `${endpoint}?key=${apiKey}`,
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'BrotherOwlDiscordBot/1.0',
+          'Referer': 'https://www.tornstats.com/'
+        }
+      });
+      
+      log(`TornStats official endpoint with key parameter ${endpoint} response status: ${spyResponse.statusCode}`);
+      if (spyResponse.statusCode === 200 && !spyResponse.error && spyResponse.data) {
+        log(`Successfully fetched data from TornStats official endpoint with key parameter ${endpoint} for player ${playerId}`);
+        return spyResponse.data;
+      }
     }
     
     // Format 5: Try the web page directly and parse HTML
