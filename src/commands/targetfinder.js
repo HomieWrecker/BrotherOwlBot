@@ -1,6 +1,9 @@
 /**
  * Target Finder command for BrotherOwlManager
  * Locates potential targets based on battle stats and fair fight bonus potential
+ * 
+ * This command leverages the battlestats-tracker for enhanced stats when available
+ * and falls back to direct API calls when necessary.
  */
 
 const { 
@@ -18,6 +21,19 @@ const { log, logError } = require('../utils/logger');
 const { BOT_CONFIG } = require('../config');
 const { findPotentialTargets, calculateTotalBattleStats, calculateWinProbability, calculateFairFightBonus } = require('../utils/torn-scraper');
 const { getUserApiKey } = require('./apikey').apikeyCommand;
+
+// Try to get the battle stats tracker if available
+let battleStatsTracker = null;
+try {
+  const battleStatsTrackerService = require('../services/battlestats-tracker');
+  if (battleStatsTrackerService && typeof battleStatsTrackerService.getPlayerStats === 'function') {
+    battleStatsTracker = battleStatsTrackerService;
+    log('BattleStats tracker loaded for targetfinder command integration');
+  }
+} catch (error) {
+  logError('Error loading battlestats-tracker for targetfinder command:', error);
+  // Continue without the tracker - we'll use direct API calls instead
+}
 
 // Create a command builder for the targetfinder command
 const targetfinderCommand = {
@@ -183,8 +199,11 @@ const targetfinderCommand = {
         // Defer reply while we find targets
         await interaction.deferReply({ ephemeral: true });
         
+        // Even with manual stats, we might be able to use the battle stats tracker for targets
+        const useEnhancedTargets = (battleStatsTracker !== null);
+        
         // Find targets based on manual stats
-        await findTargets(interaction, client, userStats, apiKey);
+        await findTargets(interaction, client, userStats, apiKey, 10, 0.5, 0.6, useEnhancedTargets);
       }
     } catch (error) {
       logError('Error in targetfinder modal handler:', error);
@@ -239,28 +258,57 @@ async function safeExecuteCommand(interaction, client) {
   await interaction.deferReply({ ephemeral: true });
   
   try {
-    // Get user's own battle stats
-    const userResponse = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${apiKey}`);
-    const userData = await userResponse.json();
+    // Try to get user's battle stats using the enhanced tracker if available
+    let userStats = null;
+    let useEnhancedStats = false;
     
-    if (userData.error) {
-      await interaction.followUp({
-        content: `❌ Error fetching your battle stats: ${userData.error.error}\n\nYour API key may not have the necessary permissions. Make sure your key has access to 'battlestats'!`,
-        ephemeral: true
-      });
-      return;
+    if (battleStatsTracker) {
+      try {
+        log(`Attempting to use battlestats-tracker for user ${interaction.user.tag}`);
+        // Use myOwnId as null since we're getting the user's own stats from their API key
+        const enhancedStats = await battleStatsTracker.getPlayerStats(null, apiKey);
+        
+        if (enhancedStats && enhancedStats.battleStats && enhancedStats.battleStats.total > 0) {
+          useEnhancedStats = true;
+          userStats = {
+            strength: enhancedStats.battleStats.strength,
+            defense: enhancedStats.battleStats.defense,
+            speed: enhancedStats.battleStats.speed,
+            dexterity: enhancedStats.battleStats.dexterity
+          };
+          log(`Successfully retrieved enhanced battle stats for targetfinder command`);
+        }
+      } catch (trackerError) {
+        logError('Error getting enhanced stats for targetfinder:', trackerError);
+        // Continue with the direct API approach
+      }
     }
     
-    // Create stats object for target finding
-    const userStats = {
-      strength: userData.strength || 0,
-      defense: userData.defense || 0,
-      speed: userData.speed || 0,
-      dexterity: userData.dexterity || 0
-    };
+    // If we couldn't get stats from the tracker, fall back to direct API call
+    if (!useEnhancedStats) {
+      log('Falling back to direct API call for battle stats');
+      const userResponse = await fetch(`https://api.torn.com/user/?selections=battlestats&key=${apiKey}`);
+      const userData = await userResponse.json();
+      
+      if (userData.error) {
+        await interaction.followUp({
+          content: `❌ Error fetching your battle stats: ${userData.error.error}\n\nYour API key may not have the necessary permissions. Make sure your key has access to 'battlestats'!`,
+          ephemeral: true
+        });
+        return;
+      }
+      
+      // Create stats object for target finding
+      userStats = {
+        strength: userData.strength || 0,
+        defense: userData.defense || 0,
+        speed: userData.speed || 0,
+        dexterity: userData.dexterity || 0
+      };
+    }
     
     // Find targets
-    await findTargets(interaction, client, userStats, apiKey, maxResults, minFairFight, minWinChance);
+    await findTargets(interaction, client, userStats, apiKey, maxResults, minFairFight, minWinChance, useEnhancedStats);
     
   } catch (error) {
     logError('Error finding targets:', error);
@@ -280,21 +328,28 @@ async function safeExecuteCommand(interaction, client) {
  * @param {number} maxResults - Maximum number of targets to find
  * @param {number} minFairFight - Minimum fair fight bonus
  * @param {number} minWinChance - Minimum win probability
+ * @param {boolean} usingEnhancedStats - Whether enhanced stats were used
  */
-async function findTargets(interaction, client, userStats, apiKey, maxResults = 10, minFairFight = 0.5, minWinChance = 0.6) {
+async function findTargets(interaction, client, userStats, apiKey, maxResults = 10, minFairFight = 0.5, minWinChance = 0.6, usingEnhancedStats = false) {
   try {
+    const totalStats = userStats.strength + userStats.defense + userStats.speed + userStats.dexterity;
+    
+    // Indicate if we're using enhanced stats
+    const statsMessage = '🔍 Searching for targets based on your battle stats' + 
+      (usingEnhancedStats ? ' (using enhanced stats):' : ':') + 
+      `\n💪 Strength: ${userStats.strength.toLocaleString()}` +
+      `\n🛡️ Defense: ${userStats.defense.toLocaleString()}` +
+      `\n🏃‍♂️ Speed: ${userStats.speed.toLocaleString()}` +
+      `\n🎯 Dexterity: ${userStats.dexterity.toLocaleString()}` +
+      `\n🔥 Total: ${totalStats.toLocaleString()}`;
+      
     await interaction.followUp({
-      content: '🔍 Searching for targets based on your battle stats:\n' + 
-               `💪 Strength: ${userStats.strength.toLocaleString()}\n` +
-               `🛡️ Defense: ${userStats.defense.toLocaleString()}\n` +
-               `🏃‍♂️ Speed: ${userStats.speed.toLocaleString()}\n` +
-               `🎯 Dexterity: ${userStats.dexterity.toLocaleString()}\n` +
-               `🔥 Total: ${(userStats.strength + userStats.defense + userStats.speed + userStats.dexterity).toLocaleString()}`,
+      content: statsMessage,
       ephemeral: true
     });
     
     // Find potential targets
-    const targets = await findPotentialTargets(userStats, apiKey, maxResults);
+    let targets = await findPotentialTargets(userStats, apiKey, maxResults);
     
     if (!targets || targets.length === 0) {
       await interaction.followUp({
@@ -302,6 +357,61 @@ async function findTargets(interaction, client, userStats, apiKey, maxResults = 
         ephemeral: true
       });
       return;
+    }
+    
+    // If we have the battle stats tracker and we're using enhanced stats,
+    // try to enhance target calculations with more accurate data
+    if (battleStatsTracker && usingEnhancedStats) {
+      try {
+        const enhancedTargets = [];
+        
+        // Process each target to see if we can get enhanced stats for them
+        for (const target of targets) {
+          try {
+            // Try to get enhanced stats for this target
+            const targetEnhancedStats = await battleStatsTracker.getPlayerStats(target.id, apiKey);
+            
+            if (targetEnhancedStats && targetEnhancedStats.battleStats && targetEnhancedStats.battleStats.total > 0) {
+              log(`Using enhanced stats for target ${target.id}`);
+              
+              // Calculate more accurate fair fight and win probability
+              const enhancedFairFight = targetEnhancedStats.fairFight?.multiplier || 
+                                      calculateFairFightBonus(totalStats, targetEnhancedStats.battleStats.total);
+              
+              const enhancedWinProb = calculateWinProbability(
+                userStats.strength, userStats.defense, userStats.speed, userStats.dexterity,
+                targetEnhancedStats.battleStats.strength,
+                targetEnhancedStats.battleStats.defense,
+                targetEnhancedStats.battleStats.speed,
+                targetEnhancedStats.battleStats.dexterity
+              );
+              
+              // Update the target with enhanced data
+              enhancedTargets.push({
+                ...target,
+                fairFightBonus: enhancedFairFight,
+                winProbability: enhancedWinProb,
+                confidence: targetEnhancedStats.confidence || 'Standard',
+                enhancedStats: true
+              });
+            } else {
+              // No enhanced stats, keep original target
+              enhancedTargets.push(target);
+            }
+          } catch (targetError) {
+            // On error, just use the original target data
+            enhancedTargets.push(target);
+          }
+        }
+        
+        // If we got any enhanced targets, use them instead
+        if (enhancedTargets.length > 0) {
+          targets = enhancedTargets;
+        }
+      } catch (enhancementError) {
+        logError('Error enhancing target data:', enhancementError);
+        // Continue with original targets
+      }
     }
     
     // Filter targets by fair fight and win chance
@@ -318,12 +428,21 @@ async function findTargets(interaction, client, userStats, apiKey, maxResults = 
       return;
     }
     
+    // Sort targets by score (fair fight * win probability)
+    filteredTargets.sort((a, b) => {
+      const scoreA = a.fairFightBonus * a.winProbability;
+      const scoreB = b.fairFightBonus * b.winProbability;
+      return scoreB - scoreA; // Descending order
+    });
+    
     // Create the target list embed
     const embed = new EmbedBuilder()
       .setTitle('🎯 Potential Targets')
       .setColor(Colors.Green)
-      .setDescription(`Found ${filteredTargets.length} potential targets based on your battle stats:`)
-      .setFooter({ text: `${BOT_CONFIG.name} | Targets sorted by fair fight bonus × win probability` })
+      .setDescription(`Found ${filteredTargets.length} potential targets based on your battle stats.` +
+        (usingEnhancedStats ? ' Using enhanced stats for greater accuracy.' : '') +
+        '\nTargets are sorted by their combined score (fair fight bonus × win probability):')
+      .setFooter({ text: `${BOT_CONFIG.name} | ${usingEnhancedStats ? 'Enhanced stats used' : 'Standard stats used'}` })
       .setTimestamp();
     
     // Add the top targets to the embed
@@ -336,13 +455,17 @@ async function findTargets(interaction, client, userStats, apiKey, maxResults = 
       const winChance = (target.winProbability * 100).toFixed(0);
       const score = (target.fairFightBonus * target.winProbability).toFixed(2);
       
+      // Indicate confidence level if available
+      const confidenceIndicator = target.enhancedStats && target.confidence
+        ? ` [${target.confidence}]`
+        : '';
+      
       targetList += `${i + 1}. **${target.name}** [${target.id}] - Level ${target.level || '?'}\n`;
-      targetList += `   • Fair Fight: ${fairFight}x | Win Chance: ${winChance}% | Score: ${score}\n`;
+      targetList += `   • Fair Fight: ${fairFight}x | Win Chance: ${winChance}%${confidenceIndicator} | Score: ${score}\n`;
       targetList += `   • Activity: ${target.activity || 'Unknown'}\n`;
       targetList += `   • [View Profile](https://www.torn.com/profiles.php?XID=${target.id})\n\n`;
     }
     
-    embed.setDescription(`Found ${filteredTargets.length} potential targets based on your battle stats.\nTargets are sorted by their combined score (fair fight bonus × win probability):`);
     embed.addFields({ name: 'Targets', value: targetList || 'No suitable targets found.' });
     
     // Add a field explaining the scoring system
@@ -369,4 +492,4 @@ async function findTargets(interaction, client, userStats, apiKey, maxResults = 
   }
 }
 
-module.exports = targetfinderCommand;
+module.exports = { targetfinderCommand };
