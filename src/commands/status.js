@@ -1,93 +1,89 @@
+/**
+ * Status command for BrotherOwlManager
+ * Shows the current status of various services and connections
+ */
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { formatDate } = require('../utils/formatting');
 const { log } = require('../utils/logger');
-const { BOT_CONFIG } = require('../config');
-const { SERVICES, checkServiceAvailability } = require('../services/integrations');
+const os = require('os');
+const { version } = require('../../package.json');
 
-// Status command - provides information about the bot and API status
-const statusCommand = {
+module.exports = {
   data: new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Get information about the bot and API status'),
-  
+    .setDescription('Shows the current status of the bot and its services'),
+    
+  /**
+   * Execute command
+   * @param {CommandInteraction} interaction - Discord interaction
+   * @param {Client} client - Discord client
+   */
   async execute(interaction, client) {
-    // Defer reply to give time to process
-    await interaction.deferReply();
+    log('Executing status command');
     
-    // Get bot uptime
-    const uptime = process.uptime();
-    const hours = Math.floor(uptime / 3600);
-    const minutes = Math.floor((uptime % 3600) / 60);
-    const seconds = Math.floor(uptime % 60);
-    const uptimeString = `${hours}h ${minutes}m ${seconds}s`;
-    
-    // Create rich embed for status data
-    const embed = new EmbedBuilder()
-      .setTitle('🦉 BrotherOwlManager Status')
-      .setColor(BOT_CONFIG.color)
-      .setTimestamp()
-      .addFields(
-        { name: 'Bot Status', value: '✅ Online', inline: true },
-        { name: 'Version', value: BOT_CONFIG.version, inline: true },
-        { name: 'Uptime', value: uptimeString, inline: true },
-        { name: 'Ping', value: `${client.ws.ping}ms`, inline: true },
-        { name: 'Torn API', value: client.tornData ? '✅ Connected' : '❌ Disconnected', inline: true }
-      );
-    
-    // Add last data update time if available
-    if (client.tornData && client.tornData.lastUpdate) {
-      const lastUpdate = new Date(client.tornData.lastUpdate);
-      embed.addFields(
-        { name: 'Last Data Update', value: formatDate(lastUpdate), inline: true }
-      );
-    }
-    
-    // Add server info
-    embed.addFields(
-      { name: 'Server Count', value: `${client.guilds.cache.size}`, inline: true },
-      { name: 'Commands', value: `${client.commands.size}`, inline: true }
-    );
-    
-    // Check external service availability
     try {
-      const serviceStatuses = [];
+      const uptimeSeconds = Math.floor(process.uptime());
+      const uptimeFormatted = formatUptime(uptimeSeconds);
       
-      // Check each service availability
-      const tornStatus = await checkServiceAvailability(SERVICES.TORN);
-      serviceStatuses.push(`Torn API: ${tornStatus ? '✅' : '❌'}`);
+      // Gather API status info
+      const lastTornData = client.tornData || {};
+      const lastUpdateTime = lastTornData.lastUpdate ? new Date(lastTornData.lastUpdate) : null;
+      const dataAge = lastUpdateTime 
+        ? Math.floor((Date.now() - lastUpdateTime) / 1000)
+        : null;
       
-      const yataStatus = await checkServiceAvailability(SERVICES.YATA);
-      serviceStatuses.push(`YATA: ${yataStatus ? '✅' : '❌'}`);
+      const dataSource = lastTornData.source || 'unknown';
+      const tornAPIStatus = dataAge !== null
+        ? (dataAge < 120 ? '🟢 Online' : '🟡 Delayed')
+        : '🔴 Offline';
       
-      const anarchyStatus = await checkServiceAvailability(SERVICES.ANARCHY);
-      serviceStatuses.push(`Anarchy: ${anarchyStatus ? '✅' : '❌'}`);
+      const embed = new EmbedBuilder()
+        .setTitle('BrotherOwlManager Status')
+        .setColor(0x0099FF)
+        .setDescription('Current status of bot services and connections')
+        .addFields(
+          { name: 'Bot Version', value: version || 'Unknown', inline: true },
+          { name: 'Uptime', value: uptimeFormatted, inline: true },
+          { name: 'Memory Usage', value: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`, inline: true },
+          { name: 'Torn API Status', value: tornAPIStatus, inline: true },
+          { name: 'Data Source', value: dataSource, inline: true },
+          { name: 'Last Update', value: lastUpdateTime ? `${dataAge}s ago` : 'Never', inline: true },
+          { name: 'Discord Gateway', value: '🟢 Connected', inline: true },
+          { name: 'Registered Commands', value: `${client.commands.size}`, inline: true },
+          { name: 'Host', value: `Replit`, inline: true }
+        )
+        .setFooter({ 
+          text: `Discord API Latency: ${client.ws.ping}ms • Server Time: ${new Date().toLocaleString()}` 
+        });
       
-      const tornstatsStatus = await checkServiceAvailability(SERVICES.TORNSTATS);
-      serviceStatuses.push(`TornStats: ${tornstatsStatus ? '✅' : '❌'}`);
-      
-      const torntoolsStatus = await checkServiceAvailability(SERVICES.TORNTOOLS);
-      serviceStatuses.push(`TornTools: ${torntoolsStatus ? '✅' : '❌'}`);
-      
-      // Add external services status field
-      embed.addFields({
-        name: 'External Services',
-        value: serviceStatuses.join('\n'),
-        inline: false
-      });
+      await interaction.reply({ embeds: [embed] });
     } catch (error) {
-      embed.addFields({
-        name: 'External Services',
-        value: 'Error checking service availability',
-        inline: false
+      console.error('Error in status command:', error);
+      await interaction.reply({ 
+        content: 'An error occurred while fetching status information. Please try again later.',
+        ephemeral: true 
       });
     }
-    
-    embed.setFooter({ 
-      text: `${BOT_CONFIG.name} v${BOT_CONFIG.version}`
-    });
-    
-    await interaction.editReply({ embeds: [embed] });
   }
 };
 
-module.exports = { statusCommand };
+/**
+ * Format uptime in days, hours, minutes, seconds
+ * @param {number} seconds - Uptime in seconds
+ * @returns {string} Formatted uptime
+ */
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / (3600 * 24));
+  seconds -= days * 3600 * 24;
+  const hrs = Math.floor(seconds / 3600);
+  seconds -= hrs * 3600;
+  const mins = Math.floor(seconds / 60);
+  seconds -= mins * 60;
+  
+  let result = '';
+  if (days > 0) result += `${days}d `;
+  if (hrs > 0) result += `${hrs}h `;
+  if (mins > 0) result += `${mins}m `;
+  result += `${seconds}s`;
+  
+  return result;
+}

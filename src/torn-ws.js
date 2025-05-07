@@ -72,15 +72,11 @@ function startTornWS(callback) {
 function connectWebSocket(callback) {
   log('Connecting to Torn API WebSocket...');
   
+  // Track if we get a specific "Unexpected server response: 200" error
+  let unexpected200Error = false;
+  
   try {
-    // Try a with some options and headers
-    ws = new WebSocket('wss://api.torn.com/wss/?v=5', {
-      headers: {
-        'User-Agent': 'BrotherOwlManager Discord Bot',
-        'Origin': 'https://www.torn.com'
-      },
-      handshakeTimeout: 15000
-    });
+    ws = new WebSocket('wss://api.torn.com/wss/');
     
     // Connection opened
     ws.on('open', () => {
@@ -128,11 +124,30 @@ function connectWebSocket(callback) {
     // Handle errors
     ws.on('error', (error) => {
       logError('Torn WebSocket error:', error);
+      
+      // Check if this is the specific 200 error that seems persistent
+      if (error.message && error.message.includes('Unexpected server response: 200')) {
+        unexpected200Error = true;
+        
+        // This is a known issue with current WebSocket endpoint
+        logWarning('Detected persistent "Unexpected server response: 200" error from Torn API.');
+        
+        // We'll immediately move to HTTP fallback in the close handler
+      }
     });
     
     // Connection closed, attempt to reconnect
     ws.on('close', (code, reason) => {
       log(`Torn WebSocket connection closed. Code: ${code}, Reason: ${reason || ''}`);
+      
+      // If we saw the specific 200 error (which seems to be a persistent issue),
+      // increase the reconnect attempt counter faster to switch to HTTP sooner
+      if (unexpected200Error) {
+        reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
+        logWarning('Skipping WebSocket reconnect attempts due to persistent "200" error.');
+        fetchChainDataFallback(callback);
+        return;
+      }
       
       // Connection closed, start reconnect process
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
