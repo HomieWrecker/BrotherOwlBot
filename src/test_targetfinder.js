@@ -19,9 +19,9 @@ if (!apiKey) {
   process.exit(1);
 }
 
-// Test data
-const testPlayerIds = ['3010289', '3243373'];
-const testPlayerName = 'Snag';
+// Test data - we'll dynamically get a valid ID through lookup
+let testPlayerIds = []; // Will be populated after name lookup
+const testPlayerNames = ['Chedburn', 'Duke', 'IceBlueFire']; // Torn staff/admins
 
 /**
  * Calculate fair fight modifier
@@ -79,6 +79,37 @@ async function fetchPlayerData(playerId) {
     return data;
   } catch (error) {
     logError(`Error fetching player data: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Test player lookup by name
+ * @param {string} name - Player name to look up
+ */
+async function lookupPlayerByName(name) {
+  try {
+    log(`Looking up player by name: ${name}`);
+    
+    // API endpoint for player lookup
+    const url = `https://api.torn.com/user/?selections=lookup&lookup=${encodeURIComponent(name)}&key=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.error) {
+      logError(`API Error: ${data.error.error}`);
+      return null;
+    }
+    
+    if (data.user && data.user.length > 0) {
+      log(`Found player: ${data.user[0].name} [${data.user[0].player_id}]`);
+      return data.user[0].player_id.toString();
+    }
+    
+    log(`No player found with name ${name}`);
+    return null;
+  } catch (error) {
+    logError(`Error looking up player: ${error.message}`);
     return null;
   }
 }

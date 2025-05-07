@@ -10,9 +10,9 @@ const { formatNumber } = require('./utils/formatting');
 const tornScraper = require('./utils/torn-scraper');
 const statIntegrations = require('./utils/stat-integrations');
 
-// Test data
-const testPlayerIds = ['3010289', '3243373'];
-const testPlayerName = 'Snag';
+// Test data - we'll dynamically get a valid ID through lookup
+let testPlayerIds = []; // Will be populated after name lookup
+const testPlayerNames = ['Chedburn', 'Duke', 'IceBlueFire']; // Torn staff/admins
 
 // We need a real API key to test this functionality
 // This should be provided as an environment variable
@@ -162,20 +162,35 @@ async function testGatherPlayerIntel(playerId) {
 async function runTests() {
   log('🔹 STARTING SPY COMMAND FUNCTIONALITY TESTS 🔹');
   
-  // Test basic data fetching with different IDs
+  // First, get valid player IDs by looking up names
+  log('Looking up valid player IDs...');
+  for (const name of testPlayerNames) {
+    const lookupResult = await testPlayerLookupByName(name);
+    if (lookupResult && lookupResult.user && lookupResult.user.length > 0) {
+      const playerId = lookupResult.user[0].player_id.toString();
+      log(`Found ID for ${name}: ${playerId}`);
+      testPlayerIds.push(playerId);
+    }
+  }
+  
+  if (testPlayerIds.length === 0) {
+    logError('Could not find any valid player IDs. Tests cannot continue.');
+    return;
+  }
+  
+  log(`Using player IDs for tests: ${testPlayerIds.join(', ')}`);
+  
+  // Test basic data fetching with valid IDs
   for (const playerId of testPlayerIds) {
     await testFetchPlayerData(playerId);
   }
   
-  // Test player lookup by name
-  await testPlayerLookupByName(testPlayerName);
-  
-  // Test profile scraping
+  // Test profile scraping with valid IDs
   for (const playerId of testPlayerIds) {
     await testScrapePlayerProfile(playerId);
   }
   
-  // Test full intelligence gathering
+  // Test full intelligence gathering with valid IDs
   for (const playerId of testPlayerIds) {
     await testGatherPlayerIntel(playerId);
   }
