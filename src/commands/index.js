@@ -99,7 +99,7 @@ try {
 }
 
 try {
-  giveawayCommand = require('./giveaway').giveawayCommand;
+  giveawayCommand = require('./giveaway');
   log('Loaded giveaway command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -107,7 +107,7 @@ try {
 }
 
 try {
-  activitymapCommand = require('./activitymap').activitymapCommand;
+  activitymapCommand = require('./activitymap');
   log('Loaded activity heat map command');
 } catch (error) {
   // Silently continue if module doesn't exist
