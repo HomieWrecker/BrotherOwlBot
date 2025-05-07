@@ -659,4 +659,4 @@ async function handlePlayerSpy(interaction, client, apiKey) {
   }
 }
 
-module.exports = { spyCommand };
+module.exports = spyCommand;

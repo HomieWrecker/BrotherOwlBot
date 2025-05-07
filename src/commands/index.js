@@ -83,7 +83,7 @@ try {
 }
 
 try {
-  spyCommand = require('./spy').spyCommand;
+  spyCommand = require('./spy');
   log('Loaded spy command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -91,7 +91,7 @@ try {
 }
 
 try {
-  targetfinderCommand = require('./targetfinder').targetfinderCommand;
+  targetfinderCommand = require('./targetfinder');
   log('Loaded target finder command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -115,7 +115,7 @@ try {
 }
 
 try {
-  warpayCommand = require('./warpay').warpayCommand;
+  warpayCommand = require('./warpay');
   log('Loaded war pay command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -123,7 +123,7 @@ try {
 }
 
 try {
-  battlestatsCommand = require('./battlestats').battlestatsCommand;
+  battlestatsCommand = require('./battlestats');
   log('Loaded battle stats command');
 } catch (error) {
   // Silently continue if module doesn't exist

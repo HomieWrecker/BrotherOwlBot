@@ -492,4 +492,4 @@ async function findTargets(interaction, client, userStats, apiKey, maxResults = 
   }
 }
 
-module.exports = { targetfinderCommand };
+module.exports = targetfinderCommand;

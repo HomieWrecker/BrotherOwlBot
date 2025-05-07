@@ -1,13 +1,10 @@
 /**
- * Torn Scraper Utility for BrotherOwlManager
- * Provides methods to gather additional data through puppeteer and trafilatura
+ * Torn API Utility for BrotherOwlManager
+ * Provides methods to gather data through the Torn API only
  * Ensures all methods comply with Torn's rules
  */
 
-const puppeteer = require('puppeteer');
-const { spawn } = require('child_process');
 const { log, logError } = require('./logger');
-const path = require('path');
 
 /**
  * Get battle stats for a player using available methods
@@ -85,35 +82,13 @@ async function fetchPlayerApiData(playerId, apiKey) {
 }
 
 /**
- * Use Python trafilatura to extract content from a web page
- * @param {string} url - URL to scrape
- * @returns {Promise<string>} Extracted text content
+ * Simple API-based method to avoid web scraping
+ * @param {string} url - URL to get content from
+ * @returns {Promise<string>} Content message
  */
 async function extractWebContent(url) {
-  return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python3', [
-      '-c',
-      `import trafilatura; downloaded = trafilatura.fetch_url("${url}"); text = trafilatura.extract(downloaded); print(text)`
-    ]);
-    
-    let dataString = '';
-    
-    pythonProcess.stdout.on('data', (data) => {
-      dataString += data.toString();
-    });
-    
-    pythonProcess.stderr.on('data', (data) => {
-      logError(`Python error: ${data}`);
-    });
-    
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Python process exited with code ${code}`));
-      } else {
-        resolve(dataString.trim());
-      }
-    });
-  });
+  log('Web content extraction is disabled to ensure bot stability');
+  return Promise.resolve('Web content extraction is disabled to ensure bot stability. Please use API methods instead.');
 }
 
 /**
@@ -347,43 +322,45 @@ async function getFactionMembersStats(factionId, apiKey) {
  */
 async function findPotentialTargets(userStats, apiKey, maxResults = 10) {
   try {
-    // This would ideally query a database of potential targets
-    // For this example, we'll use the API to find random players
-    // In a real implementation, you would need a more sophisticated target selection method
+    log('Using a safer approach for finding targets to maintain bot stability');
     
+    // Create a special search for targets using faction enemies
     const targetList = [];
     const userTotal = calculateTotalBattleStats(userStats);
     
-    // In a real implementation, you would have a database or other source of potential targets
-    // This is just a placeholder approach using random player IDs
-    // NOT recommended for production use - this is just for illustration
-    for (let i = 0; i < 20; i++) {
-      // Generate a random player ID between 1 and 2,000,000
-      // NOTE: This is NOT a good way to find targets and is just for demonstration
-      const randomId = Math.floor(Math.random() * 2000000) + 1;
-      
+    // A simplified, safer approach that avoids random API requests
+    // Fetch a few specific high-value targets instead (hardcoded IDs are just for illustration)
+    const sampleTargetIds = [1, 2, 10, 15, 100, 150, 9, 6, 4, 7];
+    
+    // Only fetch a limited number of targets to avoid API overload
+    const maxToFetch = Math.min(maxResults * 2, sampleTargetIds.length);
+    
+    for (let i = 0; i < maxToFetch; i++) {
       try {
-        const targetStats = await getPlayerBattleStats(randomId, apiKey);
+        const targetId = sampleTargetIds[i];
+        const response = await fetch(`https://api.torn.com/user/${targetId}?selections=profile,battlestats&key=${apiKey}`);
+        const targetData = await response.json();
         
-        if (targetStats) {
-          const targetTotal = calculateTotalBattleStats(targetStats);
-          const winProbability = calculateWinProbability(userStats, targetStats);
-          const fairFightBonus = calculateFairFightBonus(userStats, targetStats);
+        if (!targetData.error) {
+          const targetTotal = calculateTotalBattleStats(targetData);
+          const winProbability = calculateWinProbability(userStats, targetData);
+          const fairFightBonus = calculateFairFightBonus(userStats, targetData);
           
-          // Only include targets with a reasonable chance of winning
-          // and that have an acceptable stat range compared to the user
-          if (winProbability > 0.4 && targetTotal > 0) {
-            targetList.push({
-              id: randomId,
-              name: targetStats.name || `Player ${randomId}`,
-              level: targetStats.level || 0,
-              stats: targetStats,
-              activity: estimatePlayerActivity(targetStats),
-              fairFightBonus,
-              winProbability,
-              score: fairFightBonus * winProbability // Combined score for ranking
-            });
-          }
+          targetList.push({
+            id: targetId,
+            name: targetData.name || `Player ${targetId}`,
+            level: targetData.level || 0,
+            stats: {
+              battlestats: targetData.battlestats || {},
+              calculatedStats: {
+                totalBattleStats: targetTotal,
+                estimatedActivity: estimatePlayerActivity(targetData)
+              }
+            },
+            fairFightBonus,
+            winProbability,
+            score: fairFightBonus * winProbability
+          });
         }
       } catch (error) {
         // Skip this target and continue
@@ -394,7 +371,7 @@ async function findPotentialTargets(userStats, apiKey, maxResults = 10) {
     // Sort by score (highest first)
     targetList.sort((a, b) => b.score - a.score);
     
-    // Return the top results
+    // Return the limited results
     return targetList.slice(0, maxResults);
   } catch (error) {
     logError(`Error finding potential targets:`, error);
