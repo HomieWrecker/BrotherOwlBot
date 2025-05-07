@@ -226,4 +226,6 @@ async function handleResetSubcommand(interaction, client) {
     embeds: [embed],
     content: 'Use `/apiconnection status` in a few seconds to see the updated connection state.'
   });
-}module.exports = { apiconnectionCommand };
+}
+
+module.exports = { apiconnectionCommand };
