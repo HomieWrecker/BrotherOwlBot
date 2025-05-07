@@ -17,6 +17,16 @@ const { BOT_CONFIG } = require('../config');
 const { getPlayerBattleStats, getFactionMembersStats, extractWebContent } = require('../utils/torn-scraper');
 const { getUserApiKey } = require('./apikey');
 
+// Try to import battle stats tracker (won't crash if not available)
+let battleStatsTracker;
+try {
+  battleStatsTracker = require('../services/battlestats-tracker');
+  log('BattleStats tracker loaded for spy command integration');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  log('BattleStats tracker not available for spy command integration');
+}
+
 // Create a command builder for the spy command
 const spyCommand = {
   data: new SlashCommandBuilder()

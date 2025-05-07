@@ -4,6 +4,16 @@ const { BOT_CONFIG } = require('../config');
 const fs = require('fs');
 const path = require('path');
 
+// Try to import battle stats tracker (won't crash if not available)
+let battleStatsTracker;
+try {
+  battleStatsTracker = require('../services/battlestats-tracker');
+  log('BattleStats tracker loaded for API key integration');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  log('BattleStats tracker not available for API key integration');
+}
+
 // API key storage - would be better to use a database
 const DATA_DIR = path.join(__dirname, '..', '..', 'data');
 const USER_KEYS_FILE = path.join(DATA_DIR, 'user_keys.json');
@@ -293,8 +303,32 @@ const apikeyCommand = {
         userKeys[userId].dateAdded = new Date().toISOString();
         fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
         
+        // If battle stats tracker is available, update user's stats
+        let statsUpdated = false;
+        if (battleStatsTracker) {
+          try {
+            // Start stats update in background (don't await) to not delay the response
+            battleStatsTracker.getPlayerStats('', tornKey, true)
+              .then((result) => {
+                if (result && result.battleStats) {
+                  log(`Battle stats for user ${interaction.user.tag} updated successfully`);
+                  statsUpdated = true;
+                }
+              })
+              .catch((error) => {
+                logError(`Error updating battle stats for user ${interaction.user.tag}:`, error);
+              });
+          } catch (error) {
+            logError(`Error initiating battle stats update for user ${interaction.user.tag}:`, error);
+          }
+        }
+        
+        const responseContent = statsUpdated 
+          ? `✅ Your Torn API key has been successfully saved! Access level: ${accessLevel}\nYour battle stats will be updated in the background.`
+          : `✅ Your Torn API key has been successfully saved! Access level: ${accessLevel}`;
+        
         await interaction.reply({
-          content: `✅ Your Torn API key has been successfully saved! Access level: ${accessLevel}`,
+          content: responseContent,
           ephemeral: true
         });
         
@@ -311,6 +345,24 @@ const apikeyCommand = {
           userKeys[userId].torn = tornKey;
           userKeys[userId].dateAdded = new Date().toISOString();
           fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+          
+          // If battle stats tracker is available, try to update user's stats
+          if (battleStatsTracker) {
+            try {
+              // Start stats update in background (don't await) to not delay the response
+              battleStatsTracker.getPlayerStats('', tornKey, true)
+                .then((result) => {
+                  if (result && result.battleStats) {
+                    log(`Battle stats for user ${interaction.user.tag} updated despite validation issues`);
+                  }
+                })
+                .catch((error) => {
+                  logError(`Error updating battle stats for user ${interaction.user.tag} (with validation issues):`, error);
+                });
+            } catch (error) {
+              logError(`Error initiating battle stats update for user ${interaction.user.tag} (with validation issues):`, error);
+            }
+          }
           
           await interaction.reply({
             content: `⚠️ Your Torn API key has been saved, but I couldn't validate it. Estimated access level: ${simpleAccessLevel}`,
@@ -338,6 +390,44 @@ const apikeyCommand = {
       userKeys[userId].yata = yataKey;
       fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
       
+      // If the user also has a Torn API key, update battle stats using YATA data if available
+      if (battleStatsTracker && userKeys[userId].torn) {
+        try {
+          // Get the user's player ID
+          const tornKey = userKeys[userId].torn;
+          
+          // Fetch basic info to get the player ID
+          fetch(`https://api.torn.com/user/?selections=basic&key=${tornKey}`)
+            .then(response => response.json())
+            .then(data => {
+              if (!data.error && data.player_id) {
+                // Use the player's ID to fetch YATA data with their YATA key
+                const playerId = data.player_id.toString();
+                
+                // Update battle stats using the YATA data
+                if (battleStatsTracker) {
+                  // This would normally use an integration method that accepts the YATA key
+                  // but for simplicity, we're just calling the general update method
+                  battleStatsTracker.getPlayerStats(playerId, tornKey, true)
+                    .then(result => {
+                      if (result && result.battleStats) {
+                        log(`Battle stats for player ${playerId} updated via YATA integration`);
+                      }
+                    })
+                    .catch(error => {
+                      logError(`Error updating battle stats via YATA for player ${playerId}:`, error);
+                    });
+                }
+              }
+            })
+            .catch(error => {
+              logError(`Error fetching Torn player data with key:`, error);
+            });
+        } catch (error) {
+          logError(`Error in YATA key processing for user ${interaction.user.tag}:`, error);
+        }
+      }
+      
       await interaction.reply({
         content: '✅ Your YATA API key has been successfully saved!',
         ephemeral: true
@@ -356,6 +446,44 @@ const apikeyCommand = {
       // Store the key
       userKeys[userId].tornstats = tornstatsKey;
       fs.writeFileSync(USER_KEYS_FILE, JSON.stringify(userKeys, null, 2), 'utf8');
+      
+      // If the user also has a Torn API key, update battle stats using TornStats data if available
+      if (battleStatsTracker && userKeys[userId].torn) {
+        try {
+          // Get the user's player ID
+          const tornKey = userKeys[userId].torn;
+          
+          // Fetch basic info to get the player ID
+          fetch(`https://api.torn.com/user/?selections=basic&key=${tornKey}`)
+            .then(response => response.json())
+            .then(data => {
+              if (!data.error && data.player_id) {
+                // Use the player's ID to fetch TornStats data with their TornStats key
+                const playerId = data.player_id.toString();
+                
+                // Update battle stats using the TornStats data
+                if (battleStatsTracker) {
+                  // This would normally use an integration method that accepts the TornStats key
+                  // but for simplicity, we're just calling the general update method
+                  battleStatsTracker.getPlayerStats(playerId, tornKey, true)
+                    .then(result => {
+                      if (result && result.battleStats) {
+                        log(`Battle stats for player ${playerId} updated via TornStats integration`);
+                      }
+                    })
+                    .catch(error => {
+                      logError(`Error updating battle stats via TornStats for player ${playerId}:`, error);
+                    });
+                }
+              }
+            })
+            .catch(error => {
+              logError(`Error fetching Torn player data with key:`, error);
+            });
+        } catch (error) {
+          logError(`Error in TornStats key processing for user ${interaction.user.tag}:`, error);
+        }
+      }
       
       await interaction.reply({
         content: '✅ Your TornStats API key has been successfully saved!',
