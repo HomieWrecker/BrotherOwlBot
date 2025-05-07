@@ -16,8 +16,9 @@ if (!apiKey) {
   process.exit(1);
 }
 
-// Test with a public player ID (one of Torn's staff or a well-known player)
-const testPlayerIds = ['1', '2']; // Chedburn and Cheddah
+// Test with public player IDs (Torn's staff or well-known players)
+// These IDs should be available in most spy services
+const testPlayerIds = ['1', '2', '4']; // Chedburn, Cheddah, Oran
 
 /**
  * Test TornStats spy integration
@@ -39,10 +40,23 @@ async function testTornStatsSpyFunctionality(playerId) {
     console.log(JSON.stringify(spyData, null, 2));
     
     // Check if the data contains relevant information
+    // TornStats might return data in different formats, so we need to handle all possibilities
+    let stats = null;
+    
     if (spyData.spy) {
-      const stats = spyData.spy;
-      log(`Player: ${stats.name} [${playerId}]`);
-      log(`Level: ${stats.level}`);
+      // Format: { spy: { ... } }
+      stats = spyData.spy;
+    } else if (spyData.status && spyData.status === 'ok' && spyData.stats) {
+      // Format: { status: 'ok', stats: { ... } }
+      stats = spyData.stats;
+    } else if (spyData.user) {
+      // Format: { user: { ... } }
+      stats = spyData.user;
+    }
+    
+    if (stats) {
+      log(`Player: ${stats.name || 'Unknown'} [${playerId}]`);
+      log(`Level: ${stats.level || 'Unknown'}`);
       
       if (stats.strength && stats.defense && stats.speed && stats.dexterity) {
         const totalStats = stats.strength + stats.defense + stats.speed + stats.dexterity;
@@ -52,7 +66,11 @@ async function testTornStatsSpyFunctionality(playerId) {
         log(`Speed: ${formatNumber(stats.speed)}`);
         log(`Dexterity: ${formatNumber(stats.dexterity)}`);
         log(`Last update: ${stats.update_time || 'Unknown'}`);
+      } else {
+        log('No battle stats found in the response');
       }
+    } else {
+      log('Stats data not found in the expected format');
     }
     
     return spyData;
