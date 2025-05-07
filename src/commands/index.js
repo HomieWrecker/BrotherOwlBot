@@ -87,7 +87,7 @@ try {
 // They were causing stability issues
 
 try {
-  giveawayCommand = require('./giveaway');
+  giveawayCommand = require('./giveaway').giveawayCommand;
   log('Loaded giveaway command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -95,7 +95,7 @@ try {
 }
 
 try {
-  activitymapCommand = require('./activitymap');
+  activitymapCommand = require('./activitymap').activitymapCommand;
   log('Loaded activity heat map command');
 } catch (error) {
   // Silently continue if module doesn't exist

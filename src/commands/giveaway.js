@@ -369,4 +369,4 @@ async function handleEndGiveaway(interaction, client) {
   }
 }
 
-module.exports = giveawayCommand;
+module.exports = { giveawayCommand };

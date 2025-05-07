@@ -22,7 +22,7 @@ async function safeExecute(callback) {
   }
 }
 
-module.exports = {
+const activitymapCommand = {
   data: new SlashCommandBuilder()
     .setName('activitymap')
     .setDescription('Visualize faction member activity patterns')
@@ -267,3 +267,5 @@ module.exports = {
     });
   }
 };
+
+module.exports = { activitymapCommand };
