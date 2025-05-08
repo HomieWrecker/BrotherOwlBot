@@ -125,55 +125,80 @@ async function checkServiceAvailability(service) {
 async function getPlayerData(service, apiKey, options = {}) {
   const playerId = options.playerId || '';
   
-  switch (service) {
-    case SERVICES.YATA:
-      return fetchFromService(service, 'user', apiKey);
-    
-    case SERVICES.ANARCHY:
-      return fetchFromService(service, 'user', apiKey);
-    
-    case SERVICES.TORNSTATS:
-      return fetchFromService(service, 'stats', apiKey);
-    
-    case SERVICES.TORNTOOLS:
-      return fetchFromService(service, 'user', apiKey);
+  // First check if the service is available - for optional services
+  if (service !== SERVICES.TORN && options.checkAvailability !== false) {
+    const isAvailable = await checkServiceAvailability(service);
+    if (!isAvailable) {
+      return { 
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: `The ${service} service is currently unavailable.`
+        },
+        service_status: 'unavailable'
+      };
+    }
+  }
+  
+  try {
+    switch (service) {
+      case SERVICES.YATA:
+        return fetchFromService(service, 'user', apiKey);
       
-    case SERVICES.TORNPLAYGROUND:
-      // For specific player lookup
-      if (playerId) {
+      case SERVICES.ANARCHY:
+        return fetchFromService(service, 'user', apiKey);
+      
+      case SERVICES.TORNSTATS:
+        return fetchFromService(service, 'stats', apiKey);
+      
+      case SERVICES.TORNTOOLS:
+        return fetchFromService(service, 'user', apiKey);
+        
+      case SERVICES.TORNPLAYGROUND:
+        // For specific player lookup
+        if (playerId) {
+          return fetchFromService(
+            service,
+            `user/${playerId}`,
+            apiKey,
+            { selections: options.selections || 'profile,personalstats,battlestats' }
+          );
+        }
+        // For self lookup
         return fetchFromService(
           service,
-          `user/${playerId}`,
+          'user/',
           apiKey,
           { selections: options.selections || 'profile,personalstats,battlestats' }
         );
-      }
-      // For self lookup
-      return fetchFromService(
-        service,
-        'user/',
-        apiKey,
-        { selections: options.selections || 'profile,personalstats,battlestats' }
-      );
-    
-    case SERVICES.TORN:
-    default:
-      // For specific player lookup 
-      if (playerId) {
+      
+      case SERVICES.TORN:
+      default:
+        // For specific player lookup 
+        if (playerId) {
+          return fetchFromService(
+            service,
+            `user/${playerId}`,
+            apiKey,
+            { selections: options.selections || 'profile,personalstats,battlestats' }
+          );
+        }
+        // For self lookup
         return fetchFromService(
-          service,
-          `user/${playerId}`,
-          apiKey,
+          service, 
+          'user', 
+          apiKey, 
           { selections: options.selections || 'profile,personalstats,battlestats' }
         );
-      }
-      // For self lookup
-      return fetchFromService(
-        service, 
-        'user', 
-        apiKey, 
-        { selections: options.selections || 'profile,personalstats,battlestats' }
-      );
+    }
+  } catch (error) {
+    log(`Error in getPlayerData for ${service}: ${error.message}`);
+    return { 
+      error: { 
+        code: 'SERVICE_ERROR', 
+        message: error.message 
+      },
+      service_status: 'error'
+    };
   }
 }
 
@@ -187,52 +212,77 @@ async function getPlayerData(service, apiKey, options = {}) {
 async function getFactionData(service, apiKey, options = {}) {
   const factionId = options.factionId || '';
   
-  switch (service) {
-    case SERVICES.YATA:
-      return fetchFromService(service, `faction/${factionId}`, apiKey);
-    
-    case SERVICES.ANARCHY:
-      return fetchFromService(service, `faction/${factionId}`, apiKey);
-    
-    case SERVICES.TORNSTATS:
-      return fetchFromService(service, 'faction', apiKey);
+  // First check if the service is available - for optional services
+  if (service !== SERVICES.TORN && options.checkAvailability !== false) {
+    const isAvailable = await checkServiceAvailability(service);
+    if (!isAvailable) {
+      return { 
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: `The ${service} service is currently unavailable.`
+        },
+        service_status: 'unavailable'
+      };
+    }
+  }
+  
+  try {
+    switch (service) {
+      case SERVICES.YATA:
+        return fetchFromService(service, `faction/${factionId}`, apiKey);
       
-    case SERVICES.TORNPLAYGROUND:
-      // For specific faction lookup
-      if (factionId) {
+      case SERVICES.ANARCHY:
+        return fetchFromService(service, `faction/${factionId}`, apiKey);
+      
+      case SERVICES.TORNSTATS:
+        return fetchFromService(service, 'faction', apiKey);
+        
+      case SERVICES.TORNPLAYGROUND:
+        // For specific faction lookup
+        if (factionId) {
+          return fetchFromService(
+            service,
+            `faction/${factionId}`,
+            apiKey,
+            { selections: options.selections || 'basic,stats' }
+          );
+        }
+        // For user's faction lookup
         return fetchFromService(
           service,
-          `faction/${factionId}`,
+          'faction',
           apiKey,
           { selections: options.selections || 'basic,stats' }
         );
-      }
-      // For user's faction lookup
-      return fetchFromService(
-        service,
-        'faction',
-        apiKey,
-        { selections: options.selections || 'basic,stats' }
-      );
-    
-    case SERVICES.TORN:
-    default:
-      // For specific faction lookup
-      if (factionId) {
+      
+      case SERVICES.TORN:
+      default:
+        // For specific faction lookup
+        if (factionId) {
+          return fetchFromService(
+            service, 
+            `faction/${factionId}`, 
+            apiKey, 
+            { selections: options.selections || 'basic,stats' }
+          );
+        }
+        // For user's faction lookup
         return fetchFromService(
           service, 
-          `faction/${factionId}`, 
+          'faction', 
           apiKey, 
           { selections: options.selections || 'basic,stats' }
         );
-      }
-      // For user's faction lookup
-      return fetchFromService(
-        service, 
-        'faction', 
-        apiKey, 
-        { selections: options.selections || 'basic,stats' }
-      );
+    }
+  } catch (error) {
+    log(`Error in getFactionData for ${service}: ${error.message}`);
+    return { 
+      error: { 
+        code: 'SERVICE_ERROR', 
+        message: error.message 
+      },
+      service_status: 'error'
+    };
   }
 }
 

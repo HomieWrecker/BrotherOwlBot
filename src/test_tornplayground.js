@@ -21,7 +21,7 @@ async function testTornPlaygroundIntegration() {
   log('\n1. Testing service availability...');
   try {
     // Try a direct ping to the API endpoint
-    const response = await fetch('https://tornapi.tornplayground.eu/api/v2/');
+    const response = await fetch('https://tornapi.tornplayground.eu/');
     
     if (response.ok) {
       log('TornAPI Playground service is available');
@@ -34,24 +34,89 @@ async function testTornPlaygroundIntegration() {
     // Even if the ping fails, we'll continue with the tests
   }
   
-  // Test player data retrieval
-  log('\n2. Testing direct API call...');
-  try {
-    // Try a direct API call to verify URL format
-    const url = `https://tornapi.tornplayground.eu/api/v2/user?key=${apiKey}`;
-    log(`Testing direct URL: ${url.replace(apiKey, '****')}`);
-    
-    const response = await fetch(url);
-    if (response.ok) {
-      const data = await response.json();
-      log(`Direct API call successful! User: ${data.name || 'Unknown'} [${data.player_id || 'Unknown ID'}]`);
-    } else {
-      log(`Direct API call failed with status: ${response.status}`);
-      const text = await response.text();
-      log(`Response: ${text.slice(0, 100)}...`);
+  // Try alternate URL patterns that might be used
+  log('\n1b. Testing alternate base URL patterns...');
+  
+  const alternateUrls = [
+    'https://tornapi.tornplayground.eu/api',
+    'https://tornapi.tornplayground.eu/v2',
+    'https://tornplayground.eu/api',
+    'https://api.tornplayground.eu'
+  ];
+  
+  for (const url of alternateUrls) {
+    try {
+      log(`Testing URL: ${url}`);
+      const response = await fetch(url);
+      log(`Response status: ${response.status}`);
+      
+      // If we get a 200 response, let's check the content type
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        log(`Content type: ${contentType}`);
+        
+        // If it's JSON, we might have found the right endpoint
+        if (contentType && contentType.includes('application/json')) {
+          log(`Found potential API endpoint: ${url}`);
+        }
+      }
+    } catch (error) {
+      log(`Error testing ${url}: ${error.message}`);
     }
-  } catch (error) {
-    logError(`Error with direct API call: ${error.message}`);
+  }
+  
+  // Test player data retrieval with different API path formats
+  log('\n2. Testing direct API calls with different path formats...');
+  
+  // Let's try different API paths to see which one might work
+  const apiPaths = [
+    // Current implementation
+    `https://tornapi.tornplayground.eu/api/v2/user?key=${apiKey}`,
+    
+    // Alternative formats to try
+    `https://tornapi.tornplayground.eu/api/v2/user?apikey=${apiKey}`,
+    `https://tornapi.tornplayground.eu/api/user?key=${apiKey}`,
+    `https://tornapi.tornplayground.eu/v2/user?key=${apiKey}`,
+    `https://tornapi.tornplayground.eu/user?key=${apiKey}`,
+    
+    // Torn-like format
+    `https://tornapi.tornplayground.eu/user/?key=${apiKey}`,
+    
+    // TornStats-like format (key as part of path)
+    `https://tornapi.tornplayground.eu/api/v2/${apiKey}/user`,
+    
+    // Try with selections parameter variations
+    `https://tornapi.tornplayground.eu/api/v2/user?key=${apiKey}&select=profile,stats`,
+    `https://tornapi.tornplayground.eu/api/v2/user?key=${apiKey}&selections=profile,stats`
+  ];
+  
+  for (const url of apiPaths) {
+    try {
+      // Mask API key for logs
+      const maskedUrl = url.replace(apiKey, '****');
+      log(`Testing URL: ${maskedUrl}`);
+      
+      const response = await fetch(url);
+      log(`Response status: ${response.status}`);
+      
+      if (response.ok) {
+        try {
+          const data = await response.json();
+          log(`✓ Success! Format looks valid. Found data for: ${data.name || 'Unknown'}`);
+          
+          // If we succeeded, save this URL pattern for later use
+          log(`Found working API endpoint pattern: ${maskedUrl}`);
+          break;
+        } catch (e) {
+          log(`Response wasn't valid JSON: ${e.message}`);
+        }
+      } else {
+        const text = await response.text();
+        log(`Response first 100 chars: ${text.slice(0, 100)}...`);
+      }
+    } catch (error) {
+      log(`Error with ${url.replace(apiKey, '****')}: ${error.message}`);
+    }
   }
   
   log('\n3. Testing player data retrieval (self) via integration...');
