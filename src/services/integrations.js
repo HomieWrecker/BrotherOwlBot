@@ -13,7 +13,8 @@ const SERVICES = {
   YATA: 'yata',
   ANARCHY: 'anarchy',
   TORNSTATS: 'tornstats',
-  TORNTOOLS: 'torntools'
+  TORNTOOLS: 'torntools',
+  TORNPLAYGROUND: 'tornplayground'
 };
 
 /**
@@ -71,6 +72,10 @@ function buildServiceUrl(service, endpoint, apiKey, options = {}) {
     
     case SERVICES.TORNTOOLS:
       return `https://torntools.com/api/v1/${endpoint}/?key=${apiKey}`;
+      
+    case SERVICES.TORNPLAYGROUND:
+      const playgroundSelections = options.selections ? `&selections=${options.selections}` : '';
+      return `https://tornapi.tornplayground.eu/api/v2/${endpoint}?key=${apiKey}${playgroundSelections}`;
     
     case SERVICES.TORN:
     default:
@@ -92,7 +97,8 @@ async function checkServiceAvailability(service) {
       [SERVICES.YATA]: 'https://yata.yt/',
       [SERVICES.ANARCHY]: 'https://anarchy.torn.com/',
       [SERVICES.TORNSTATS]: 'https://www.tornstats.com/',
-      [SERVICES.TORNTOOLS]: 'https://torntools.com/'
+      [SERVICES.TORNTOOLS]: 'https://torntools.com/',
+      [SERVICES.TORNPLAYGROUND]: 'https://tornapi.tornplayground.eu/api/v2/'
     };
     
     const url = urls[service];
@@ -117,6 +123,8 @@ async function checkServiceAvailability(service) {
  * @returns {Promise<Object>} Player data
  */
 async function getPlayerData(service, apiKey, options = {}) {
+  const playerId = options.playerId || '';
+  
   switch (service) {
     case SERVICES.YATA:
       return fetchFromService(service, 'user', apiKey);
@@ -129,9 +137,37 @@ async function getPlayerData(service, apiKey, options = {}) {
     
     case SERVICES.TORNTOOLS:
       return fetchFromService(service, 'user', apiKey);
+      
+    case SERVICES.TORNPLAYGROUND:
+      // For specific player lookup
+      if (playerId) {
+        return fetchFromService(
+          service,
+          `user/${playerId}`,
+          apiKey,
+          { selections: options.selections || 'profile,personalstats,battlestats' }
+        );
+      }
+      // For self lookup
+      return fetchFromService(
+        service,
+        'user/',
+        apiKey,
+        { selections: options.selections || 'profile,personalstats,battlestats' }
+      );
     
     case SERVICES.TORN:
     default:
+      // For specific player lookup 
+      if (playerId) {
+        return fetchFromService(
+          service,
+          `user/${playerId}`,
+          apiKey,
+          { selections: options.selections || 'profile,personalstats,battlestats' }
+        );
+      }
+      // For self lookup
       return fetchFromService(
         service, 
         'user', 
@@ -160,9 +196,37 @@ async function getFactionData(service, apiKey, options = {}) {
     
     case SERVICES.TORNSTATS:
       return fetchFromService(service, 'faction', apiKey);
+      
+    case SERVICES.TORNPLAYGROUND:
+      // For specific faction lookup
+      if (factionId) {
+        return fetchFromService(
+          service,
+          `faction/${factionId}`,
+          apiKey,
+          { selections: options.selections || 'basic,stats' }
+        );
+      }
+      // For user's faction lookup
+      return fetchFromService(
+        service,
+        'faction',
+        apiKey,
+        { selections: options.selections || 'basic,stats' }
+      );
     
     case SERVICES.TORN:
     default:
+      // For specific faction lookup
+      if (factionId) {
+        return fetchFromService(
+          service, 
+          `faction/${factionId}`, 
+          apiKey, 
+          { selections: options.selections || 'basic,stats' }
+        );
+      }
+      // For user's faction lookup
       return fetchFromService(
         service, 
         'faction', 
