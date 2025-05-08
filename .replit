@@ -2,6 +2,7 @@ modules = ["python-3.11", "nodejs-20", "python3"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["zip"]
 
 [workflows]
 runButton = "Project"
@@ -26,6 +27,10 @@ args = "BrotherOwl Bot 24/7"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Test TornAPI Playground"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Python Spy Bot"
 
 [[workflows.workflow]]
 name = "discord_bot_review"
@@ -60,6 +65,14 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node src/test_tornplayground.js"
+
+[[workflows.workflow]]
+name = "Python Spy Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd bot_package && python main.py"
 
 [deployment]
 run = ["sh", "-c", "npm install discord.js ws && node index.js"]
