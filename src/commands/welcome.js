@@ -373,4 +373,4 @@ async function handleDisable(interaction, client) {
   }
 }
 
-module.exports = { welcomeCommand };
+module.exports = welcomeCommand;

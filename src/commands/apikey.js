@@ -109,101 +109,8 @@ const apikeyCommand = {
       ephemeral: true
     });
     
-    // Create a collector to handle button interactions
-    const filter = i => i.user.id === interaction.user.id && i.customId.startsWith('apikey_');
-    const collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 }); // 5 minute timeout
-    
-    collector.on('collect', async i => {
-      // Handle the button interactions
-      if (i.customId === 'apikey_torn') {
-        // Show Torn API key input modal
-        const modal = new ModalBuilder()
-          .setCustomId('apikey_torn_modal')
-          .setTitle('Enter Your Torn API Key');
-        
-        const apiKeyInput = new TextInputBuilder()
-          .setCustomId('torn_key_input')
-          .setLabel('Your Torn API Key')
-          .setPlaceholder('Enter your 16-character API key here')
-          .setStyle(TextInputStyle.Short)
-          .setMinLength(16)
-          .setMaxLength(16)
-          .setRequired(true);
-        
-        const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
-        modal.addComponents(actionRow);
-        
-        await i.showModal(modal);
-      }
-      else if (i.customId === 'apikey_tornstats') {
-        // Show TornStats API key input modal
-        const modal = new ModalBuilder()
-          .setCustomId('apikey_tornstats_modal')
-          .setTitle('Enter Your TornStats API Key');
-        
-        const apiKeyInput = new TextInputBuilder()
-          .setCustomId('tornstats_key_input')
-          .setLabel('Your TornStats API Key')
-          .setPlaceholder('Enter your TornStats API key here')
-          .setStyle(TextInputStyle.Short)
-          .setMinLength(10)
-          .setMaxLength(64)
-          .setRequired(true);
-        
-        const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
-        modal.addComponents(actionRow);
-        
-        await i.showModal(modal);
-      }
-      else if (i.customId === 'apikey_remove') {
-        // Remove all API keys
-        try {
-          await keyStorageService.deleteAllKeys(interaction.user.id);
-          await i.reply({
-            content: '✅ All your API keys have been removed from storage.',
-            ephemeral: true
-          });
-          log(`User ${interaction.user.tag} removed all API keys`);
-        } catch (error) {
-          logError(`Error removing API keys for user ${interaction.user.tag}:`, error);
-          await i.reply({
-            content: '❌ There was an error removing your API keys. Please try again later.',
-            ephemeral: true
-          });
-        }
-      }
-      else if (i.customId === 'apikey_help') {
-        // Show API key help
-        const helpEmbed = new EmbedBuilder()
-          .setTitle('📋 API Keys Information')
-          .setColor(BOT_CONFIG.color)
-          .setDescription(
-            '**This bot can integrate with Torn and TornStats:**\n\n' +
-            '**Torn API Key** (Required)\n' +
-            '1. Log in to [Torn](https://www.torn.com)\n' +
-            '2. Go to Settings (gear icon in the top right)\n' +
-            '3. Click on the "API Key" tab\n' +
-            '4. Generate a new key with permissions for: `public, stats, battlestats, personalstats, profile`\n\n' +
-            '**TornStats API Key** (Optional)\n' +
-            '1. Log in to [TornStats](https://tornstats.com)\n' +
-            '2. Go to your Settings\n' +
-            '3. Find the "API Key" section\n' +
-            '4. Copy your key or generate a new one\n' +
-            '5. Make sure your key starts with "TS_" (the bot will add this prefix if missing)\n\n' +
-            '**All keys are kept private** and are only used to fetch your data when you request it.'
-          )
-          .setFooter({ text: 'Never share your API keys with people you don\'t trust' });
-        
-        await i.reply({
-          embeds: [helpEmbed],
-          ephemeral: true
-        });
-      }
-    });
-    
-    collector.on('end', collected => {
-      log(`API key button collector ended, ${collected.size} interactions processed`);
-    });
+    // Note: Button interactions are now handled in the handleButton method
+    log(`API key management panel shown to ${interaction.user.tag}`);
   },
   
   /**
@@ -212,13 +119,98 @@ const apikeyCommand = {
    * @param {Client} client - Discord client
    */
   async handleButton(interaction, client) {
-    // This method is called from bot.js when an API key-related button is clicked
-    // All our button handling code is already in the execute method
-    // This is just a placeholder to satisfy the interface
-    if (!interaction.replied) {
-      await interaction.deferUpdate().catch(error => {
-        logError('Error deferring button update:', error);
+    // Handle button interactions based on the customId
+    if (interaction.customId === 'apikey_torn') {
+      // Show Torn API key input modal
+      const modal = new ModalBuilder()
+        .setCustomId('apikey_torn_modal')
+        .setTitle('Enter Your Torn API Key');
+      
+      const apiKeyInput = new TextInputBuilder()
+        .setCustomId('torn_key_input')
+        .setLabel('Your Torn API Key')
+        .setPlaceholder('Enter your 16-character API key here')
+        .setStyle(TextInputStyle.Short)
+        .setMinLength(16)
+        .setMaxLength(16)
+        .setRequired(true);
+      
+      const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
+      modal.addComponents(actionRow);
+      
+      await interaction.showModal(modal);
+    }
+    else if (interaction.customId === 'apikey_tornstats') {
+      // Show TornStats API key input modal
+      const modal = new ModalBuilder()
+        .setCustomId('apikey_tornstats_modal')
+        .setTitle('Enter Your TornStats API Key');
+      
+      const apiKeyInput = new TextInputBuilder()
+        .setCustomId('tornstats_key_input')
+        .setLabel('Your TornStats API Key')
+        .setPlaceholder('Enter your TornStats API key here')
+        .setStyle(TextInputStyle.Short)
+        .setMinLength(10)
+        .setMaxLength(64)
+        .setRequired(true);
+      
+      const actionRow = new ActionRowBuilder().addComponents(apiKeyInput);
+      modal.addComponents(actionRow);
+      
+      await interaction.showModal(modal);
+    }
+    else if (interaction.customId === 'apikey_remove') {
+      // Remove all API keys
+      try {
+        await keyStorageService.deleteAllKeys(interaction.user.id);
+        await interaction.reply({
+          content: '✅ All your API keys have been removed from storage.',
+          ephemeral: true
+        });
+        log(`User ${interaction.user.tag} removed all API keys`);
+      } catch (error) {
+        logError(`Error removing API keys for user ${interaction.user.tag}:`, error);
+        await interaction.reply({
+          content: '❌ There was an error removing your API keys. Please try again later.',
+          ephemeral: true
+        });
+      }
+    }
+    else if (interaction.customId === 'apikey_help') {
+      // Show API key help
+      const helpEmbed = new EmbedBuilder()
+        .setTitle('📋 API Keys Information')
+        .setColor(BOT_CONFIG.color)
+        .setDescription(
+          '**This bot can integrate with Torn and TornStats:**\n\n' +
+          '**Torn API Key** (Required)\n' +
+          '1. Log in to [Torn](https://www.torn.com)\n' +
+          '2. Go to Settings (gear icon in the top right)\n' +
+          '3. Click on the "API Key" tab\n' +
+          '4. Generate a new key with permissions for: `public, stats, battlestats, personalstats, profile`\n\n' +
+          '**TornStats API Key** (Optional)\n' +
+          '1. Log in to [TornStats](https://tornstats.com)\n' +
+          '2. Go to your Settings\n' +
+          '3. Find the "API Key" section\n' +
+          '4. Copy your key or generate a new one\n' +
+          '5. Make sure your key starts with "TS_" (the bot will add this prefix if missing)\n\n' +
+          '**All keys are kept private** and are only used to fetch your data when you request it.'
+        )
+        .setFooter({ text: 'Never share your API keys with people you don\'t trust' });
+      
+      await interaction.reply({
+        embeds: [helpEmbed],
+        ephemeral: true
       });
+    }
+    else {
+      // Default case - defer the update
+      if (!interaction.replied) {
+        await interaction.deferUpdate().catch(error => {
+          logError('Error deferring button update:', error);
+        });
+      }
     }
   },
   

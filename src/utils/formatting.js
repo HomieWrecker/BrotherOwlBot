@@ -224,6 +224,43 @@ function formatTimeAgo(date) {
   return `${years} year${years !== 1 ? 's' : ''}`;
 }
 
+/**
+ * Format milliseconds duration into a readable string
+ * @param {number} ms - Duration in milliseconds
+ * @returns {string} Formatted duration string
+ */
+function formatDuration(ms) {
+  if (!ms || ms <= 0) {
+    return 'None';
+  }
+  
+  // Calculate days, hours, minutes, seconds
+  const seconds = Math.floor((ms / 1000) % 60);
+  const minutes = Math.floor((ms / (1000 * 60)) % 60);
+  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  
+  const parts = [];
+  
+  if (days > 0) {
+    parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+  }
+  
+  if (hours > 0) {
+    parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+  }
+  
+  if (minutes > 0) {
+    parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+  }
+  
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
+  }
+  
+  return parts.join(', ');
+}
+
 module.exports = {
   formatTimeRemaining,
   formatNumber,
@@ -234,5 +271,6 @@ module.exports = {
   formatStatValue,
   formatCurrency,
   formatPeriod,
-  formatTimeAgo
+  formatTimeAgo,
+  formatDuration
 };

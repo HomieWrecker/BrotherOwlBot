@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits, ActivityType, Events, Collection } = require('discord.js');
 const { registerCommands } = require('./commands/index');
-const { log, error: logError } = require('./utils/logger');
+const { log, logError } = require('./utils/logger');
 const { BOT_CONFIG } = require('./config');
 const path = require('path');
 const fs = require('fs');
@@ -8,6 +8,8 @@ const fs = require('fs');
 // Load services
 let welcomeService = null;
 let rolePermissions = null;
+let giveawayService = null;
+let eventService = null;
 
 try {
   welcomeService = require('./services/welcome-service');
@@ -23,6 +25,20 @@ try {
   logError('Error loading role permissions service:', error);
 }
 
+try {
+  giveawayService = require('./services/giveaway-service');
+  log('Giveaway service loaded');
+} catch (error) {
+  logError('Error loading giveaway service:', error);
+}
+
+try {
+  eventService = require('./services/event-service');
+  log('Event service loaded');
+} catch (error) {
+  logError('Error loading event service:', error);
+}
+
 // Discord client with required intents
 const client = new Client({
   intents: [
@@ -30,8 +46,12 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     // Additional intents for welcome system
-    GatewayIntentBits.GuildMembers // Needed to detect member join/leave events
-  ]
+    GatewayIntentBits.GuildMembers, // Needed to detect member join/leave events
+    // Additional intents for giveaway system
+    GatewayIntentBits.GuildMessageReactions, // Needed for reaction-based giveaways
+    GatewayIntentBits.DirectMessages // Needed for DM notifications
+  ],
+  partials: ['MESSAGE', 'CHANNEL', 'REACTION'] // Required for reaction events on uncached messages
 });
 
 // Initialize commands collection
@@ -63,6 +83,28 @@ function startBot() {
         log('Welcome service initialized');
       } catch (error) {
         logError('Failed to initialize welcome service:', error);
+      }
+    }
+    
+    // Initialize giveaway service if available
+    if (giveawayService && giveawayService.initializeGiveawayService) {
+      try {
+        await giveawayService.initializeGiveawayService(client);
+        log('Giveaway service initialized');
+      } catch (error) {
+        logError('Failed to initialize giveaway service:', error);
+      }
+    }
+    
+    // Initialize event service if available
+    if (eventService && eventService.initEventService) {
+      try {
+        // Store client for event service to use for reminders
+        global.discordClient = client;
+        eventService.initEventService(client);
+        log('Event service initialized');
+      } catch (error) {
+        logError('Failed to initialize event service:', error);
       }
     }
   });
@@ -205,13 +247,72 @@ function startBot() {
             }
           }
         }
+        // Handle bank-related buttons
+        else if (interaction.customId === 'bank_withdraw' || 
+                 interaction.customId.startsWith('bank_fulfill_') || 
+                 interaction.customId.startsWith('bank_cancel_')) {
+          // Try to find bank command
+          const bankCommand = client.commands.get('bank');
+          if (bankCommand && bankCommand.handleButton) {
+            // Use a separate try-catch to ensure bank buttons don't affect other functionality
+            try {
+              await bankCommand.handleButton(interaction, client);
+            } catch (bankError) {
+              logError('Error in bank button handler (isolated):', bankError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this bank action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle giveaway-related buttons
+        else if (interaction.customId.startsWith('giveaway_')) {
+          // Try to find giveaway command
+          const giveawayCommand = client.commands.get('giveaway');
+          if (giveawayCommand && giveawayCommand.handleButton) {
+            // Use a separate try-catch to ensure giveaway buttons don't affect other functionality
+            try {
+              await giveawayCommand.handleButton(interaction, client);
+            } catch (giveawayError) {
+              logError('Error in giveaway button handler (isolated):', giveawayError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this giveaway action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle event-related buttons
+        else if (interaction.customId.startsWith('event_')) {
+          // Try to find events command
+          const eventsCommand = client.commands.get('events');
+          if (eventsCommand && eventsCommand.handleButton) {
+            // Use a separate try-catch to ensure event buttons don't affect other functionality
+            try {
+              await eventsCommand.handleButton(interaction, client);
+            } catch (eventError) {
+              logError('Error in event button handler (isolated):', eventError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this event action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
       }
     }
     
     // Handle select menu interactions
-    if (interaction.isStringSelectMenu()) {
+    if (interaction.isStringSelectMenu() || interaction.isRoleSelectMenu()) {
       try {
         // Handle permissions-related select menus
         if (interaction.customId.startsWith('permissions_')) {
@@ -274,6 +375,57 @@ function startBot() {
             }
           }
         }
+        else if (interaction.customId.startsWith('bank_withdraw_modal_')) {
+          // Try to find bank command
+          const bankCommand = client.commands.get('bank');
+          if (bankCommand && bankCommand.handleModal) {
+            try {
+              await bankCommand.handleModal(interaction, client);
+            } catch (error) {
+              logError('Error in bank modal handler:', error);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your bank request. This error has been logged.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        else if (interaction.customId === 'giveaway_create_modal') {
+          // Try to find giveaway command
+          const giveawayCommand = client.commands.get('giveaway');
+          if (giveawayCommand && giveawayCommand.handleModal) {
+            try {
+              await giveawayCommand.handleModal(interaction, client);
+            } catch (error) {
+              logError('Error in giveaway modal handler:', error);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your giveaway request. This error has been logged.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        else if (interaction.customId.startsWith('event_')) {
+          // Try to find events command
+          const eventsCommand = client.commands.get('events');
+          if (eventsCommand && eventsCommand.handleModal) {
+            try {
+              await eventsCommand.handleModal(interaction, client);
+            } catch (error) {
+              logError('Error in events modal handler:', error);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your event request. This error has been logged.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling modal submission:', error);
       }
@@ -298,6 +450,72 @@ function startBot() {
         await welcomeService.handleMemberLeave(member);
       } catch (error) {
         logError('Error in welcome service member leave handler:', error);
+      }
+    }
+  });
+  
+  // Handle autocomplete interactions
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isAutocomplete()) return;
+    
+    try {
+      // Handle events command autocomplete
+      if (interaction.commandName === 'events') {
+        const eventsCommand = client.commands.get('events');
+        if (eventsCommand && eventsCommand.handleAutocomplete) {
+          try {
+            await eventsCommand.handleAutocomplete(interaction, client);
+          } catch (error) {
+            logError('Error in events autocomplete handler:', error);
+            // Respond with empty options to prevent client-side errors
+            await interaction.respond([]).catch(() => {});
+          }
+        }
+      }
+    } catch (error) {
+      logError('Error handling autocomplete interaction:', error);
+      // Respond with empty options to prevent client-side errors
+      await interaction.respond([]).catch(() => {});
+    }
+  });
+  
+  // Handle reaction events for giveaways
+  client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    if (giveawayService && giveawayService.handleReactionAdd) {
+      try {
+        // Partial reaction handling
+        if (reaction.partial) {
+          try {
+            await reaction.fetch();
+          } catch (error) {
+            logError('Error fetching partial reaction:', error);
+            return;
+          }
+        }
+        
+        await giveawayService.handleReactionAdd(reaction, user);
+      } catch (error) {
+        logError('Error handling reaction add for giveaway:', error);
+      }
+    }
+  });
+  
+  client.on(Events.MessageReactionRemove, async (reaction, user) => {
+    if (giveawayService && giveawayService.handleReactionRemove) {
+      try {
+        // Partial reaction handling
+        if (reaction.partial) {
+          try {
+            await reaction.fetch();
+          } catch (error) {
+            logError('Error fetching partial reaction:', error);
+            return;
+          }
+        }
+        
+        await giveawayService.handleReactionRemove(reaction, user);
+      } catch (error) {
+        logError('Error handling reaction remove for giveaway:', error);
       }
     }
   });

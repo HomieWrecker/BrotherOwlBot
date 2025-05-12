@@ -4,7 +4,7 @@ const { log, logError } = require('../utils/logger');
 // Try to load welcome command without affecting existing functionality
 let welcomeCommand;
 try {
-  welcomeCommand = require('./welcome').welcomeCommand;
+  welcomeCommand = require('./welcome');
   log('Loaded welcome command');
 } catch (error) {
   // Silently continue if module doesn't exist
@@ -52,6 +52,46 @@ try {
   logError('Error loading botpermissions command:', error);
 }
 
+// Try to load ping command without affecting existing functionality
+let pingCommand;
+try {
+  pingCommand = require('./ping');
+  log('Loaded ping command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading ping command:', error);
+}
+
+// Try to load bank command without affecting existing functionality
+let bankCommand;
+try {
+  bankCommand = require('./bank');
+  log('Loaded bank command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading bank command:', error);
+}
+
+// Try to load giveaway command without affecting existing functionality
+let giveawayCommand;
+try {
+  giveawayCommand = require('./giveaway');
+  log('Loaded giveaway command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading giveaway command:', error);
+}
+
+// Try to load events command without affecting existing functionality
+let eventsCommand;
+try {
+  eventsCommand = require('./events');
+  log('Loaded events command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading events command:', error);
+}
+
 // Collection of commands to register
 const commands = [];
 
@@ -69,6 +109,18 @@ if (factionInfoCommand && factionInfoCommand.data) commands.push(factionInfoComm
 
 // Add botpermissions command if available
 if (botPermissionsCommand && botPermissionsCommand.data) commands.push(botPermissionsCommand);
+
+// Add ping command if available
+if (pingCommand && pingCommand.data) commands.push(pingCommand);
+
+// Add bank command if available
+if (bankCommand && bankCommand.data) commands.push(bankCommand);
+
+// Add giveaway command if available
+if (giveawayCommand && giveawayCommand.data) commands.push(giveawayCommand);
+
+// Add events command if available
+if (eventsCommand && eventsCommand.data) commands.push(eventsCommand);
 
 /**
  * Registers all slash commands with Discord API

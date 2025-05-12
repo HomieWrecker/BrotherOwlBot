@@ -12,6 +12,10 @@ const BOT_CONFIG = {
   features: {
     welcome: {
       enabled: true
+    },
+    bank: {
+      enabled: true,
+      cleanupInterval: 7 // Days to keep fulfilled/cancelled requests before cleanup
     }
   },
   

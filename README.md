@@ -26,6 +26,7 @@ The bot provides the following slash commands:
 - `/stats` - View your Torn battle stats and track stat gains
 - `/factioninfo` - View detailed information about your faction members
 - `/botpermissions` - Configure role-based access control for commands (admin only)
+- `/ping` - Check bot status, latency, uptime, and server information
 
 ## Welcome System
 
