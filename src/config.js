@@ -1,10 +1,10 @@
 /**
- * Configuration settings for the BrotherOwl Discord bot
+ * Configuration settings for the Brother Owl Discord bot
  */
 
 const BOT_CONFIG = {
   // Bot appearance
-  name: "BrotherOwlManager",
+  name: "Brother Owl",
   version: "1.0.0",
   color: 0x8B4513, // Brown color for owl theme
   

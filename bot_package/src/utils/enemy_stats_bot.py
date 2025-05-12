@@ -128,7 +128,7 @@ class EnemyStatsCog(commands.Cog):
     async def help_spy(self, ctx):
         """Show help for spy-related commands"""
         embed = discord.Embed(
-            title="BrotherOwl Spy Commands",
+            title="Brother Owl Spy Commands",
             description="Commands for tracking and estimating enemy battle stats",
             color=discord.Color.blue()
         )
