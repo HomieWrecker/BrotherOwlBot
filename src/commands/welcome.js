@@ -1,5 +1,5 @@
 /**
- * Welcome command for BrotherOwlManager
+ * Welcome command for Brother Owl
  * Handles configuration of the welcome system for new members
  * 
  * IMPORTANT: This command is designed with isolation in mind to prevent it
@@ -50,10 +50,6 @@ const welcomeCommand = {
         .addRoleOption(option =>
           option.setName('member_role')
             .setDescription('Role to assign to verified members')
-            .setRequired(false))
-        .addRoleOption(option =>
-          option.setName('contractor_role')
-            .setDescription('Role to assign to contractors')
             .setRequired(false))
         .addRoleOption(option =>
           option.setName('ally_role')
@@ -202,7 +198,6 @@ async function handleSetup(interaction, client) {
     const logChannel = interaction.options.getChannel('log_channel');
     const approverRole = interaction.options.getRole('approver_role');
     const memberRole = interaction.options.getRole('member_role');
-    const contractorRole = interaction.options.getRole('contractor_role');
     const allyRole = interaction.options.getRole('ally_role');
     const traderRole = interaction.options.getRole('trader_role');
     const guestRole = interaction.options.getRole('guest_role');
