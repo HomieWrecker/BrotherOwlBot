@@ -18,10 +18,6 @@ args = "discord_bot_review"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "BrotherOwl Bot"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "BrotherOwl Bot 24/7"
 
 [[workflows.workflow.tasks]]
@@ -32,6 +28,10 @@ args = "Test TornAPI Playground"
 task = "workflow.run"
 args = "Python Spy Bot"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "BrotherOwl Bot"
+
 [[workflows.workflow]]
 name = "discord_bot_review"
 author = "agent"
@@ -39,15 +39,6 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "ls -la && npm list || echo \"No packages installed yet\" && echo \"Bot structure:\" && find src -type f | sort"
-
-[[workflows.workflow]]
-name = "BrotherOwl Bot"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install discord.js ws && node index.js"
-waitForPort = 3000
 
 [[workflows.workflow]]
 name = "BrotherOwl Bot 24/7"
@@ -74,8 +65,17 @@ author = "agent"
 task = "shell.exec"
 args = "cd bot_package && python main.py"
 
+[[workflows.workflow]]
+name = "BrotherOwl Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node index.js"
+waitForPort = 3000
+
 [deployment]
-run = ["sh", "-c", "npm install discord.js ws && node index.js"]
+run = ["sh", "-c", "node index.js"]
 
 [[ports]]
 localPort = 3000

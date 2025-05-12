@@ -1,39 +1,42 @@
-# BrotherOwlManager Discord Bot
+# Brother Owl Discord Bot
 
-A Discord bot for Torn faction groups that connects to the Torn API and provides real-time faction information and management tools.
+A streamlined Discord bot for Torn faction groups that offers welcome functionality and member management.
 
 ## Features
 
-- Real-time chain status monitoring
-- Faction member activity tracking
-- Faction statistics display
-- Bot status monitoring
-- Command help system
+- New member welcome system
+- Customizable role assignment
+- Membership verification process
+- Server-specific configuration
 
 ## Commands
 
-The bot provides the following slash commands:
+The bot provides the following slash command:
 
-- `/chain` - Get the current faction chain status (count, timeout, etc.)
-- `/members` - View faction members list with status and position information
-- `/activity` - View recent faction activity logs
-- `/stats` - View faction statistics (respect, territories, etc.)
-- `/status` - Check the bot and API connection status
-- `/help` - Get help with available commands
+- `/welcome setup` - Configure the welcome system (admin only)
+- `/welcome status` - Check the current welcome configuration (admin only)
+- `/welcome disable` - Disable the welcome system (admin only)
+
+## Welcome System
+
+The welcome system offers the following features:
+- Customizable welcome messages for new members
+- Role selection options (Member, Ally, Trader, Guest)
+- Member verification process with approval roles
+- Logging of member events (join, leave, verification)
 
 ## Requirements
 
 - Node.js v14.0.0 or higher
 - Discord.js v14.x
 - A Discord bot token
-- A Torn API key with faction access
+- Discord Administrator permissions to configure the welcome system
 
 ## Environment Variables
 
 The following environment variables are required:
 
 - `DISCORD_TOKEN` - Your Discord bot token
-- `TORN_API_KEY` - Your Torn API key with faction access
 
 ## Installation
 
@@ -47,10 +50,10 @@ The following environment variables are required:
 ```
 ├── src
 │   ├── commands       # Command implementations
+│   ├── services       # Service modules
 │   ├── utils          # Utility functions
 │   ├── bot.js         # Main bot logic
-│   ├── config.js      # Bot configuration
-│   └── torn-ws.js     # Torn API connection handler
+│   └── config.js      # Bot configuration
 ├── index.js           # Entry point
 └── package.json       # Project metadata
 ```
@@ -58,7 +61,3 @@ The following environment variables are required:
 ## License
 
 MIT License
-
-## Credits
-
-Created by [Your Name] using Discord.js and the Torn API.

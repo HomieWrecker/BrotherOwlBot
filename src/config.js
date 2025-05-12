@@ -10,18 +10,15 @@ const BOT_CONFIG = {
   
   // Features
   features: {
-    chain: {
-      enabled: true,
-      refreshInterval: 5 * 60 * 1000 // 5 minutes in milliseconds
-    },
-    // Add more features as they're implemented
+    welcome: {
+      enabled: true
+    }
   },
   
-  // WebSocket configuration
-  websocket: {
-    reconnectAttempts: 10,
-    reconnectDelayBase: 5000, // 5 seconds
-    heartbeatInterval: 30000 // 30 seconds
+  // Bot configuration
+  config: {
+    logging: true,
+    debugMode: false
   },
   
   // Default permissions

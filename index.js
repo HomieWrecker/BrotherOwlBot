@@ -58,7 +58,6 @@ function startup() {
     }
     log('Required environment variables:');
     log('- DISCORD_TOKEN: Your Discord bot token');
-    log('- TORN_API_KEY: Your Torn API key');
     log('-----------------------------------');
     
   } catch (error) {

@@ -52,6 +52,10 @@ const welcomeCommand = {
             .setDescription('Role to assign to verified members')
             .setRequired(false))
         .addRoleOption(option =>
+          option.setName('contractor_role')
+            .setDescription('Role to assign to contractors')
+            .setRequired(false))
+        .addRoleOption(option =>
           option.setName('ally_role')
             .setDescription('Role to assign to allies')
             .setRequired(false))
@@ -198,6 +202,7 @@ async function handleSetup(interaction, client) {
     const logChannel = interaction.options.getChannel('log_channel');
     const approverRole = interaction.options.getRole('approver_role');
     const memberRole = interaction.options.getRole('member_role');
+    const contractorRole = interaction.options.getRole('contractor_role');
     const allyRole = interaction.options.getRole('ally_role');
     const traderRole = interaction.options.getRole('trader_role');
     const guestRole = interaction.options.getRole('guest_role');
@@ -231,6 +236,7 @@ async function handleSetup(interaction, client) {
       logChannelId: logChannel.id,
       approverRoleId: approverRole ? approverRole.id : null,
       memberRoleId: memberRole ? memberRole.id : null,
+      contractorRoleId: contractorRole ? contractorRole.id : null,
       allyRoleId: allyRole ? allyRole.id : null,
       traderRoleId: traderRole ? traderRole.id : null,
       guestRoleId: guestRole ? guestRole.id : null,

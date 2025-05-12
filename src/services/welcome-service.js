@@ -46,6 +46,7 @@ const WELCOME_MESSAGES = [
 // Role descriptions
 const ROLE_DESCRIPTIONS = {
   "Member": "Full faction members with access to all faction resources and activities",
+  "Contractor": "Hired members who assist with faction operations for payment",
   "Ally": "Members of allied factions with limited access to shared resources",
   "Trader": "Business partners focused on market and item exchanges",
   "Guest": "Visitors with restricted access to general channels only"
