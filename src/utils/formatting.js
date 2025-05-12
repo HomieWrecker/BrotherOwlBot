@@ -190,6 +190,40 @@ function formatPeriod(period) {
   }
 }
 
+/**
+ * Format time since a given date
+ * @param {Date} date - The date to calculate time since
+ * @returns {string} Formatted time ago string
+ */
+function formatTimeAgo(date) {
+  const dateObj = typeof date === 'number' ? new Date(date * 1000) : date;
+  const now = new Date();
+  const diffMs = now - dateObj;
+  
+  // Convert to seconds, minutes, hours, days
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHr / 24);
+  
+  // Format appropriately based on time difference
+  if (diffSec < 60) return `${diffSec} second${diffSec !== 1 ? 's' : ''}`;
+  if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''}`;
+  if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? 's' : ''}`;
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} week${weeks !== 1 ? 's' : ''}`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `${months} month${months !== 1 ? 's' : ''}`;
+  }
+  
+  const years = Math.floor(diffDays / 365);
+  return `${years} year${years !== 1 ? 's' : ''}`;
+}
+
 module.exports = {
   formatTimeRemaining,
   formatNumber,
@@ -199,5 +233,6 @@ module.exports = {
   formatPercentChange,
   formatStatValue,
   formatCurrency,
-  formatPeriod
+  formatPeriod,
+  formatTimeAgo
 };

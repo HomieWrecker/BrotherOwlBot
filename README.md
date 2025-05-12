@@ -1,6 +1,6 @@
 # Brother Owl Discord Bot
 
-A streamlined Discord bot for Torn faction groups that offers welcome functionality and member management.
+A streamlined Discord bot for Torn faction groups that offers welcome functionality, member management, secure API key storage, personal stat tracking, and detailed faction information with multi-bot support.
 
 ## Features
 
@@ -8,14 +8,23 @@ A streamlined Discord bot for Torn faction groups that offers welcome functional
 - Customizable role assignment
 - Membership verification process
 - Server-specific configuration
+- Secure API key storage with SQLite database
+- Support for both Torn API and TornStats API keys
+- Personal battle stats tracking with gain history
+- Faction member status monitoring
+- Xanax and energy usage tracking
+- Interactive information displays
 
 ## Commands
 
-The bot provides the following slash command:
+The bot provides the following slash commands:
 
 - `/welcome setup` - Configure the welcome system (admin only)
 - `/welcome status` - Check the current welcome configuration (admin only)
 - `/welcome disable` - Disable the welcome system (admin only)
+- `/apikey` - Manage your Torn API and TornStats API keys
+- `/stats` - View your Torn battle stats and track stat gains
+- `/factioninfo` - View detailed information about your faction members
 
 ## Welcome System
 
@@ -25,9 +34,38 @@ The welcome system offers the following features:
 - Member verification process with approval roles
 - Logging of member events (join, leave, verification)
 
+## API Key System
+
+The API key system offers the following features:
+- Secure storage of user API keys in SQLite database
+- Support for both Torn API and TornStats API keys
+- Key validation and access level detection
+- Privacy-focused design with key masking
+- Shared database for multiple bot instances
+- Easy key management interface
+
+## Stats Tracking System
+
+The stats tracking system offers the following features:
+- Track personal battle stats over time
+- View growth since last check and monthly comparisons
+- Detailed breakdown of strength, defense, speed, and dexterity gains
+- Persistent tracking with SQLite database storage
+- Private stats reporting for individual users
+
+## Faction Information System
+
+The faction information system offers the following features:
+- Real-time faction member status (online/offline with time tracking)
+- Detailed xanax usage tracking for faction members
+- Energy usage monitoring for faction members
+- Interactive buttons to switch between different information views
+- Sorted member lists by position and online status
+
 ## Requirements
 
 - Node.js v14.0.0 or higher
+- SQLite3 (included in dependencies)
 - Discord.js v14.x
 - A Discord bot token
 - Discord Administrator permissions to configure the welcome system
@@ -73,7 +111,7 @@ pm2 restart Brother-Owl-Bot
 
 ### Synology NAS Deployment
 
-To deploy on a Synology NAS:
+To deploy on a Synology NAS (including support for multiple bots sharing the same database):
 
 1. Install Docker on your Synology NAS
 2. Pull the Node.js image
@@ -106,17 +144,43 @@ PM2 provides monitoring, auto-restart, and logs management.
 
 ```
 ├── src
-│   ├── commands       # Command implementations (welcome.js, index.js)
-│   ├── services       # Service modules (welcome-service.js)
+│   ├── commands       # Command implementations
+│   │   ├── welcome.js # Welcome command
+│   │   ├── apikey.js  # API key management command
+│   │   └── index.js   # Command registration system
+│   ├── services       # Service modules
+│   │   ├── welcome-service.js    # Welcome service 
+│   │   └── key-storage-service.js # SQLite-based API key storage
 │   ├── utils          # Utility functions (formatting.js, logger.js)
 │   ├── bot.js         # Main bot logic
 │   └── config.js      # Bot configuration
-├── data               # Persistent data storage (welcome_configs.json)
+├── data               # Persistent data storage
+│   ├── welcome_configs.json # Welcome system configuration
+│   └── brother_owl.db # SQLite database for API keys
 ├── index.js           # Entry point
 └── package.json       # Project metadata
 ```
 
 Additional folders like `backup_commands`, `backup_services`, and `backup_utils` contain the backed-up components that were removed from the streamlined version but may be restored in the future.
+
+## Multi-Bot Data Sharing
+
+The bot uses a SQLite database (`data/brother_owl.db`) to store API keys, which enables data sharing between multiple bot instances. This is particularly useful when running different bots that need access to the same user API keys.
+
+### How It Works
+
+1. All API keys are stored in a central SQLite database
+2. Each bot instance connects to the same database file
+3. When a user sets their API key in one bot, it becomes available to all other bots
+4. This prevents users from having to register their API keys multiple times
+
+### Implementation Details
+
+- The database uses a simple schema with a single `api_keys` table
+- Each user's Discord ID serves as the primary key
+- Both Torn API and TornStats API keys are stored in separate columns
+- Key validation and access level checks are performed before storage
+- All database operations are handled by the `key-storage-service.js` module
 
 ## License
 

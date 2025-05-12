@@ -1,17 +1,26 @@
 const { Client, GatewayIntentBits, ActivityType, Events, Collection } = require('discord.js');
 const { registerCommands } = require('./commands/index');
-const { log, logError } = require('./utils/logger');
+const { log, error: logError } = require('./utils/logger');
 const { BOT_CONFIG } = require('./config');
 const path = require('path');
 const fs = require('fs');
 
-// Load welcome service
+// Load services
 let welcomeService = null;
+let rolePermissions = null;
+
 try {
   welcomeService = require('./services/welcome-service');
   log('Welcome service loaded');
 } catch (error) {
   logError('Error loading welcome service:', error);
+}
+
+try {
+  rolePermissions = require('./services/role-permissions');
+  log('Role permissions service loaded');
+} catch (error) {
+  logError('Error loading role permissions service:', error);
 }
 
 // Discord client with required intents
@@ -70,6 +79,29 @@ function startBot() {
       }
       
       try {
+        // Check permissions if role permissions service is available
+        if (rolePermissions && interaction.guild) {
+          const member = interaction.member;
+          
+          // Skip permission check for botpermissions command (admin only)
+          if (interaction.commandName !== 'botpermissions') {
+            const userRoleIds = member.roles.cache.map(role => role.id);
+            const hasPermission = await rolePermissions.hasPermission(
+              interaction.guildId, 
+              userRoleIds, 
+              interaction.commandName
+            );
+            
+            if (!hasPermission) {
+              await interaction.reply({
+                content: '❌ You do not have permission to use this command.',
+                ephemeral: true
+              });
+              return;
+            }
+          }
+        }
+        
         log(`Executing command: ${interaction.commandName}`);
         await command.execute(interaction, client);
       } catch (error) {
@@ -116,6 +148,63 @@ function startBot() {
             }
           }
         }
+        // Handle API key-related buttons
+        else if (interaction.customId.startsWith('apikey_')) {
+          // Try to find apikey command
+          const apikeyCommand = client.commands.get('apikey');
+          if (apikeyCommand && apikeyCommand.handleButton) {
+            // Use a separate try-catch to ensure API key buttons don't affect other functionality
+            try {
+              await apikeyCommand.handleButton(interaction, client);
+            } catch (apikeyError) {
+              logError('Error in API key button handler (isolated):', apikeyError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this API key action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle faction info-related buttons
+        else if (interaction.customId.startsWith('factioninfo_')) {
+          // Try to find factioninfo command
+          const factionInfoCommand = client.commands.get('factioninfo');
+          if (factionInfoCommand && factionInfoCommand.handleButton) {
+            // Use a separate try-catch to ensure faction info buttons don't affect other functionality
+            try {
+              await factionInfoCommand.handleButton(interaction, client);
+            } catch (factionInfoError) {
+              logError('Error in faction info button handler (isolated):', factionInfoError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this faction info action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        // Handle permissions-related buttons
+        else if (interaction.customId.startsWith('permissions_')) {
+          // Try to find botpermissions command
+          const botPermissionsCommand = client.commands.get('botpermissions');
+          if (botPermissionsCommand && botPermissionsCommand.handleButton) {
+            // Use a separate try-catch to ensure permissions buttons don't affect other functionality
+            try {
+              await botPermissionsCommand.handleButton(interaction, client);
+            } catch (permissionsError) {
+              logError('Error in permissions button handler (isolated):', permissionsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this permissions action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling button interaction:', error);
       }
@@ -135,6 +224,23 @@ function startBot() {
               if (!interaction.replied) {
                 await interaction.reply({
                   content: '❌ There was an error processing your welcome form. This error has been logged.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        else if (interaction.customId.startsWith('apikey_')) {
+          // Try to find apikey command
+          const apikeyCommand = client.commands.get('apikey');
+          if (apikeyCommand && apikeyCommand.handleModal) {
+            try {
+              await apikeyCommand.handleModal(interaction, client);
+            } catch (error) {
+              logError('Error in apikey modal handler:', error);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing your API key. This error has been logged.',
                   ephemeral: true
                 }).catch(() => {});
               }
