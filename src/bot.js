@@ -210,6 +210,33 @@ function startBot() {
       }
     }
     
+    // Handle select menu interactions
+    if (interaction.isStringSelectMenu()) {
+      try {
+        // Handle permissions-related select menus
+        if (interaction.customId.startsWith('permissions_')) {
+          // Try to find botpermissions command
+          const botPermissionsCommand = client.commands.get('botpermissions');
+          if (botPermissionsCommand && botPermissionsCommand.handleSelectMenu) {
+            // Use a separate try-catch to ensure permissions select menus don't affect other functionality
+            try {
+              await botPermissionsCommand.handleSelectMenu(interaction, client);
+            } catch (permissionsError) {
+              logError('Error in permissions select menu handler (isolated):', permissionsError);
+              if (!interaction.replied) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this permissions action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logError('Error handling select menu interaction:', error);
+      }
+    }
+    
     // Handle modal submissions
     if (interaction.isModalSubmit()) {
       try {

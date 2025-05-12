@@ -25,6 +25,7 @@ The bot provides the following slash commands:
 - `/apikey` - Manage your Torn API and TornStats API keys
 - `/stats` - View your Torn battle stats and track stat gains
 - `/factioninfo` - View detailed information about your faction members
+- `/botpermissions` - Configure role-based access control for commands (admin only)
 
 ## Welcome System
 
@@ -61,6 +62,18 @@ The faction information system offers the following features:
 - Energy usage monitoring for faction members
 - Interactive buttons to switch between different information views
 - Sorted member lists by position and online status
+
+## Role-Based Permissions System
+
+The role-based permissions system offers the following features:
+- Control command access based on Discord roles
+- Granular permission levels (No Access, Use, Contribute, Manage, Admin)
+- Organized commands into logical categories for easier management
+- Category-based permission assignment
+- Persistent storage using SQLite database
+- Interactive UI for managing permissions
+- Comprehensive overview of all role permissions
+- Easy permission reset and management options
 
 ## Requirements
 
