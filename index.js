@@ -1,6 +1,5 @@
-// Entry point for the BrotherOwl Discord bot
+// Entry point for the Brother Owl Discord bot
 const { startBot } = require('./src/bot');
-const { startTornWS } = require('./src/torn-ws');
 const { log, logError } = require('./src/utils/logger');
 const { startKeepAliveServer } = require('./keepalive');
 const fs = require('fs');
@@ -38,52 +37,9 @@ process.on('unhandledRejection', (reason, promise) => {
 // Main startup function with error recovery
 function startup() {
   try {
-    // Start the bot and connect to Torn API via WebSocket
-    log('Starting BrotherOwl Discord bot...');
-    const client = startBot();
-    
-    // Set up comprehensive recovery monitoring
-    if (client) {
-      client.on('error', (error) => {
-        logError('Discord client error:', error);
-        attemptRestart('Discord client error');
-      });
-      
-      client.on('disconnect', (event) => {
-        logError('Discord client disconnected:', event);
-        // Let the built-in reconnection handle this first
-        
-        // Set up a timeout to check if reconnection failed
-        setTimeout(() => {
-          if (!client.isReady()) {
-            logError('Discord client failed to reconnect automatically within 30 seconds');
-            attemptRestart('failed reconnection');
-          }
-        }, 30000);
-      });
-      
-      client.on('reconnecting', () => {
-        log('Discord client reconnecting...');
-      });
-      
-      client.on('resumed', (replayed) => {
-        log(`Discord connection resumed, replayed ${replayed} events`);
-      });
-      
-      // Reset restart counter after successful connection
-      client.once('ready', () => {
-        log('Discord client ready, resetting restart counter');
-        restartAttempts = 0;
-        
-        // Set up a heartbeat check to ensure bot remains responsive
-        setInterval(() => {
-          if (!client.isReady()) {
-            logError('Heartbeat check: Discord client is not ready');
-            attemptRestart('failed heartbeat check');
-          }
-        }, 300000); // Check every 5 minutes
-      });
-    }
+    // Start the bot
+    log('Starting Brother Owl Discord bot...');
+    startBot();
     
     // Start keep-alive server if on Replit
     if (IS_REPLIT) {

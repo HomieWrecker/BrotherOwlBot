@@ -170,7 +170,7 @@ function startBot() {
   });
 
   // Log in to Discord
-  client.login(process.env.DISCORD_TOKEN)
+  return client.login(process.env.DISCORD_TOKEN)
     .catch(error => {
       logError('Failed to log in to Discord:', error);
       throw error; // Re-throw to trigger process restart in index.js
