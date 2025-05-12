@@ -333,6 +333,25 @@ function startBot() {
             }
           }
         }
+        // Handle market-related select menus
+        else if (interaction.customId.startsWith('market_')) {
+          // Try to find market command
+          const marketCommand = client.commands.get('market');
+          if (marketCommand && marketCommand.handleSelectMenu) {
+            // Use a separate try-catch to ensure market select menus don't affect other functionality
+            try {
+              await marketCommand.handleSelectMenu(interaction, client);
+            } catch (marketError) {
+              logError('Error in market select menu handler (isolated):', marketError);
+              if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({
+                  content: '❌ There was an error processing this market action. This error has been logged and will not affect other bot functionality.',
+                  ephemeral: true
+                }).catch(() => {});
+              }
+            }
+          }
+        }
       } catch (error) {
         logError('Error handling select menu interaction:', error);
       }

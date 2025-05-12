@@ -92,6 +92,16 @@ try {
   logError('Error loading events command:', error);
 }
 
+// Try to load market command without affecting existing functionality
+let marketCommand;
+try {
+  marketCommand = require('./market');
+  log('Loaded market command');
+} catch (error) {
+  // Silently continue if module doesn't exist
+  logError('Error loading market command:', error);
+}
+
 // Collection of commands to register
 const commands = [];
 
@@ -121,6 +131,9 @@ if (giveawayCommand && giveawayCommand.data) commands.push(giveawayCommand);
 
 // Add events command if available
 if (eventsCommand && eventsCommand.data) commands.push(eventsCommand);
+
+// Add market command if available
+if (marketCommand && marketCommand.data) commands.push(marketCommand);
 
 /**
  * Registers all slash commands with Discord API
