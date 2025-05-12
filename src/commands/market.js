@@ -102,7 +102,7 @@ const POPULAR_ITEMS = [
  * Fetch item market data from Torn API
  * @param {Array} itemIds - Array of item IDs to fetch
  * @param {string} apiKey - Torn API key
- * @returns {Promise<Object|null>} Market data or null if error
+ * @returns {Promise<Object>} Market data or error object
  */
 async function fetchMarketData(itemIds, apiKey) {
   try {
@@ -115,13 +115,19 @@ async function fetchMarketData(itemIds, apiKey) {
     
     if (data.error) {
       logError(`API Error fetching market data: ${data.error.error}`);
-      return null;
+      return { 
+        error: data.error.error,
+        code: data.error.code 
+      };
     }
     
     return data;
   } catch (error) {
     logError('Error fetching market data:', error);
-    return null;
+    return { 
+      error: 'Network or server error while fetching market data',
+      code: 0
+    };
   }
 }
 
@@ -145,7 +151,10 @@ function formatMarketData(marketData, itemsToShow) {
   
   for (const item of itemsToShow) {
     const itemId = item.id.toString();
-    const itemData = marketData && marketData[itemId] ? marketData[itemId] : null;
+    
+    // Check if there is market data for this item
+    // Skip error objects which would be at the top level
+    const itemData = (!marketData.error && marketData[itemId]) ? marketData[itemId] : null;
     
     let lowestPrice = "No listings";
     let quantity = 0;
@@ -236,8 +245,17 @@ const marketCommand = {
         // Fetch market data for all items
         const marketData = await fetchMarketData(itemIds, apiKey);
         
-        if (!marketData) {
-          return interaction.editReply('❌ Could not fetch market data. Please try again later.');
+        if (marketData.error) {
+          // Different messages based on error types
+          if (marketData.code === 2) {
+            return interaction.editReply('❌ Invalid API key. Please set up your API key again with `/apikey`.');
+          } else if (marketData.code === 5) {
+            return interaction.editReply('❌ You have been temporarily rate limited by the Torn API. Please try again in a minute.');
+          } else if (marketData.code === 8 || marketData.code === 9) {
+            return interaction.editReply('❌ Your API key does not have permission to access market data. Please check your API key permissions.');
+          } else {
+            return interaction.editReply(`❌ API Error: ${marketData.error}. Please try again later.`);
+          }
         }
         
         // Format the market data
