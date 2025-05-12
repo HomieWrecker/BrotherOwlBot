@@ -45,6 +45,12 @@ The following environment variables are required:
 3. Set up environment variables
 4. Start the bot: `node index.js`
 
+**Important:** Only run one instance of the bot at a time. Running multiple instances with the same token will cause conflicts in Discord's API.
+
+## Running on Replit
+
+On Replit, use the "BrotherOwl Bot" workflow to start the bot. This workflow is configured to run the bot with the necessary environment variables and keep it alive on Replit.
+
 ## Project Structure
 
 ```
