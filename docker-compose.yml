@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  brotherowlbot:
+    container_name: brotherowlbot
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/usr/src/app/data
+    ports:
+      - "3000:3000" # Optional, remove or change if not using a web port
