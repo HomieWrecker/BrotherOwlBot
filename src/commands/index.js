@@ -1,6 +1,6 @@
 // src/commands/index.js
 
-import { REST, Routes, Collection } from 'discord.js';
+const { REST, Routes, Collection } = require('discord.js');
 import { readdirSync } from 'fs';
 import path from 'path';
 import { BOT_CONFIG } from '../config.js';
