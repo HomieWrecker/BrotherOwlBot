@@ -1,64 +1,28 @@
-// src/commands/index.js
+import { REST, Routes, Collection } from 'discord.js';
+import { BOT_CONFIG } from '../config/config.js';
 
-const { REST, Routes, Collection } = require('discord.js');
-import { readdirSync } from 'fs';
-import path from 'path';
-import { BOT_CONFIG } from '../config.js';
-import { log, logError } from '../utils/logger.js';
-
-// Initialize command collection for the client
-const commandsMap = new Collection();
-
-/**
- * Dynamically load commands from a folder
- */
-function loadCommandsFromFolder(folderPath, commandsArray = []) {
-  const files = readdirSync(folderPath).filter(file => file.endsWith('.js'));
-
-  for (const file of files) {
-    const filePath = path.join(folderPath, file);
-    const command = require(filePath);
-
-    if (command.data && command.execute) {
-      commandsArray.push(command.data.toJSON());
-      commandsMap.set(command.data.name, command);
-      log(`Loaded ${command.data.name} command`);
-    } else {
-      logError(`Invalid command format in ${file}`);
-    }
-  }
-
-  return commandsArray;
-}
-
-/**
- * Register all commands with Discord
- * @param {Client} client - The Discord client
- */
 export async function registerCommands(client) {
-  const allCommands = [];
+  client.commands = new Collection();
 
-  const commandsPath = path.resolve('./src/commands');
-  const peacePath = path.resolve('./src/commands/peace');
+  // Register example command
+  client.commands.set('ping', {
+    name: 'ping',
+    description: 'Replies with Pong!',
+    execute: async (interaction) => {
+      await interaction.reply('Pong!');
+    },
+  });
 
-  loadCommandsFromFolder(commandsPath, allCommands);
-  loadCommandsFromFolder(peacePath, allCommands);
-
-  // Attach command collection to client
-  client.commands = commandsMap;
-
+  const rest = new REST({ version: '10' }).setToken(BOT_CONFIG.token);
   try {
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-    log('Registering slash commands with Discord...');
-
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: allCommands }
+      Routes.applicationCommands('1116766123501821992'),
+      { body: Array.from(client.commands.values()).map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+      })) }
     );
-
-    log(`Successfully registered ${allCommands.length} commands.`);
   } catch (error) {
-    logError('Error registering slash commands:', error);
+    console.error('Error registering commands:', error);
   }
 }
