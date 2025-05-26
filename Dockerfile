@@ -1,18 +1,15 @@
-# Use official Node.js LTS image
-FROM node:18
+FROM node:18-alpine  # Smaller image (~5x smaller!)
 
-# Set working directory inside the container
 WORKDIR /usr/src/app
 
-# Copy package files and install dependencies
+# Install dependencies FIRST (better layer caching)
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --only=production  # `ci` is stricter than `install`
 
-# Copy the rest of the bot files
+# Copy all other files
 COPY . .
 
-# Set environment variables (optional)
-ENV NODE_ENV=production
+# Verify config.js was copied correctly (debug step)
+RUN cat src/config/config.js | grep ownerId  # Should show `process.env.OWNER_ID`
 
-# Start the bot
 CMD ["node", "index.js"]
