@@ -31,7 +31,7 @@ const BOT_CONFIG = {
   },
 
   // Owner ID
-  ownerId: "893004402028331039",
+  ownerId: process.env.OWNER_ID, // No hardcoded fallback,
 };
 
 // Default embed template
