@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Brother Owl and Owl Eye Discord bots for Torn faction management",
   "main": "run.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node run.js",
     "build": "echo 'No build step required'",
