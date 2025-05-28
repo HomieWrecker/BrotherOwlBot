@@ -1,8 +1,9 @@
 // Combined launcher script for Brother Owl bots
 // This script manages both bots and ensures they stay online
 
-const { spawn } = require('child_process');
-const express = require('express');
+import { spawn } from 'child_process';
+import express from 'express';
+
 const app = express();
 const PORT = 3000;
 
