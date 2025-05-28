@@ -9,6 +9,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
+     "preinstall": "npm audit fix"
   },
   "dependencies": {
     "discord.js": "^14.19.3",
@@ -16,6 +17,6 @@
   },
 {
   "engines": {
-    "node": "18.x"
+    "node": ">=18.0.0"
   }
 }
