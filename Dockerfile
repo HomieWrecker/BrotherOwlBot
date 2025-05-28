@@ -4,3 +4,4 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 CMD ["node", "index.js"]
+RUN rm -rf package-lock.json && npm install
