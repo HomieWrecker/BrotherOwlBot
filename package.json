@@ -1,4 +1,8 @@
 {
+  "type": "module",
+  // ... keep existing content
+},
+{
   "name": "brotherowl",
   "version": "1.0.0",
   "type": "module",
