@@ -56,23 +56,39 @@ function startJsBot() {
 function startPyBot() {
   if (isPyRunning) return;
   
-  console.log('Starting Python Spy bot...');
-  pyBot = spawn('python', ['bot_package/main.py'], {
-    stdio: 'inherit',
-    detached: false
-  });
+  console.log('Attempting to start Python Spy bot...');
   
-  isPyRunning = true;
-  
-  pyBot.on('exit', (code) => {
-    console.log(`Python bot exited with code ${code}`);
-    isPyRunning = false;
+  // Check if Python is available in this environment
+  try {
+    pyBot = spawn('python3', ['bot_package/main.py'], {
+      stdio: 'inherit',
+      detached: false
+    });
     
-    // Restart after a delay
-    setTimeout(() => {
-      startPyBot();
-    }, 15000);
-  });
+    isPyRunning = true;
+    
+    pyBot.on('error', (error) => {
+      console.log('Python bot failed to start:', error.message);
+      if (error.code === 'ENOENT') {
+        console.log('Python not available in this environment - running JavaScript bot only');
+        isPyRunning = false;
+        return;
+      }
+    });
+    
+    pyBot.on('exit', (code) => {
+      console.log(`Python bot exited with code ${code}`);
+      isPyRunning = false;
+      
+      // Only restart if exit wasn't due to missing Python
+      setTimeout(() => {
+        startPyBot();
+      }, 15000);
+    });
+  } catch (error) {
+    console.log('Python environment not available - continuing with JavaScript bot only');
+    isPyRunning = false;
+  }
 }
 
 // Function to restart both bots
