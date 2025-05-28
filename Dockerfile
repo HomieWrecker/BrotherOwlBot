@@ -1,7 +1,13 @@
 FROM node:18-alpine
 WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install --production
+
+# First copy ONLY package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies (using legacy peer deps if needed)
+RUN npm install --production --legacy-peer-deps
+
+# Copy remaining files
 COPY . .
-CMD ["node", "index.js"]
-RUN rm -rf package-lock.json && npm install
+
+CMD ["npm", "start"]
