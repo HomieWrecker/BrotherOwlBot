@@ -1,20 +1,8 @@
 // Custom launcher script for Render deployment
-// Fixes any ownerId formatting issues and starts the combined launcher
+// Starts the combined launcher directly
 
-import { execSync } from 'child_process';
-import fs from 'fs';
+console.log('Starting Brother Owl bot system...');
+console.log('Initializing combined launcher...');
 
-console.log('Running pre-launch checks...');
-
-// Run the fix script first
-try {
-  console.log('Checking for ownerId syntax issues...');
-  await import('./fix_ownerId.js');
-  console.log('Syntax check complete');
-} catch (error) {
-  console.error('Error during syntax check:', error);
-}
-
-// Then start the combined launcher
-console.log('Starting Brother Owl and Owl Eye bots...');
+// Start the combined launcher directly
 await import('./combined_launcher.js');
