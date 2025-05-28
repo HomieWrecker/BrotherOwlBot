@@ -1,20 +1,18 @@
 {
-  "name": "brother-owl-bots",
+  "name": "brother-owl-bots", 
   "version": "1.0.0",
-  "description": "Brother Owl and Owl Eye Discord bots for Torn faction management",
-  "main": "run.js",
   "type": "module",
+  "main": "run.js",
   "scripts": {
     "start": "node run.js",
-    "build": "echo 'No build step required'",
-    "postinstall": "echo 'Installation complete'"
+    "build": "echo 'No build step required'"
   },
   "engines": {
-    "node": "18.x",
-    "npm": ">=8.0.0"
+    "node": "18.x"
   },
   "dependencies": {
     "discord.js": "14.15.3",
+    "dotenv": "16.3.1", 
     "express": "4.19.2",
     "node-fetch": "2.7.0",
     "sqlite3": "5.1.6",
